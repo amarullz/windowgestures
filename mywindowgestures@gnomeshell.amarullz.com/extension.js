@@ -89,6 +89,11 @@ export default class Extension {
         return 32;
     }
 
+    // Get gesture threshold
+    _gestureCancelThreshold() {
+        return 10;
+    }
+
     // Check edge flags
     _isEdge(edge) {
         return ((this._edgeAction & edge) == edge);
@@ -346,91 +351,115 @@ export default class Extension {
         }
         else if (this._isEdge(WindowEdgeAction.WAIT_GESTURE)) {
             let threshold = this._gestureThreshold();
+            let cancelThreshold = this._gestureCancelThreshold();
             let absX = Math.abs(this._movePos.x);
             let absY = Math.abs(this._movePos.y);
 
-            if (absX >= threshold || absY >= threshold) {
-                if (absX > absY) {
-                    if (this._movePos.x < 0) {
-                        this._edgeAction |= WindowEdgeAction.GESTURE_LEFT;
-                        this._movePos.x = 0 - (threshold + 5);
-                        this._movePos.y = 0;
-                    }
-                    else {
-                        this._edgeAction |= WindowEdgeAction.GESTURE_RIGHT;
-                        this._movePos.x = (threshold + 5);
-                        this._movePos.y = 0;
-                    }
-                    this._edgeGestured = true;
-                }
-                else {
-                    if (this._movePos.y < 0) {
-                        this._edgeAction |= WindowEdgeAction.GESTURE_UP;
-                        this._edgeGestured = true;
-                        this._movePos.y = 0 - (threshold + 5);
-                        this._movePos.x = 0;
-                    }
-                    else if (!this._edgeGestured) {
-                        if (this._targetWindow.is_fullscreen()) {
-                            this._targetWindow.unmake_fullscreen();
-                        }
-                        if (this._targetWindow.get_maximized()) {
-                            this._targetWindow.unmaximize(
-                                Meta.MaximizeFlags.BOTH
-                            );
-                        }
-                        if (this._targetWindow.allows_move()) {
-                            this._edgeAction = WindowEdgeAction.MOVE;
-                        }
-                        else {
-                            this._edgeAction |= WindowEdgeAction.GESTURE_DOWN;
+            if (!this._edgeGestured) {
+                if (absX >= threshold || absY >= threshold) {
+                    if (absX > absY) {
+                        if (this._movePos.x < 0 - threshold) {
+                            this._edgeAction |= WindowEdgeAction.GESTURE_LEFT;
                             this._edgeGestured = true;
-                            this._movePos.y = (threshold + 5);
-                            this._movePos.x = 0;
+                        }
+                        else if (this._movePos.x > threshold) {
+                            this._edgeAction |= WindowEdgeAction.GESTURE_RIGHT;
+                            this._edgeGestured = true;
                         }
                     }
                     else {
-                        if (this._edgeAction != WindowEdgeAction.WAIT_GESTURE) {
-                            this._hidePreview();
+                        if (this._movePos.y < 0 - threshold) {
+                            this._edgeAction |= WindowEdgeAction.GESTURE_UP;
+                            this._edgeGestured = true;
                         }
-                        this._edgeAction = WindowEdgeAction.WAIT_GESTURE;
-                        this._movePos.y = 0;
-                        this._movePos.x = 0;
+                        else if (this._movePos.y > threshold) {
+                            if (this._targetWindow.is_fullscreen() ||
+                                this._targetWindow.get_maximized()) {
+                                this._edgeAction |=
+                                    WindowEdgeAction.GESTURE_DOWN;
+                                this._edgeGestured = true;
+                            }
+                            else {
+                                if (this._targetWindow.allows_move()) {
+                                    this._edgeAction = WindowEdgeAction.MOVE;
+                                }
+                            }
+                        }
                     }
+                }
+                if (this._edgeGestured) {
+                    /* Reset move position */
+                    this._movePos.x = this._movePos.y = 0;
                 }
             }
             else {
-                if (this._edgeAction != WindowEdgeAction.WAIT_GESTURE) {
-                    this._hidePreview();
+                let resetGesture = false;
+                /* Reset Gesture Detection */
+                if (this._isEdge(WindowEdgeAction.GESTURE_LEFT)) {
+                    if (this._movePos.x > cancelThreshold) {
+                        resetGesture = true;
+                    }
                 }
-                this._edgeAction = WindowEdgeAction.WAIT_GESTURE;
+                else if (this._isEdge(WindowEdgeAction.GESTURE_RIGHT)) {
+                    if (this._movePos.x < 0 - cancelThreshold) {
+                        resetGesture = true;
+                    }
+                }
+                else if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
+                    if (this._movePos.y > cancelThreshold) {
+                        resetGesture = true;
+                    }
+                }
+                else if (this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
+                    if (this._movePos.y < 0 - cancelThreshold) {
+                        resetGesture = true;
+                    }
+                }
+                if (resetGesture) {
+                    this._hidePreview();
+                    this._edgeAction = WindowEdgeAction.WAIT_GESTURE;
+                }
+                else {
+                    /* Reset move position */
+                    this._movePos.x = this._movePos.y = 0;
+                }
             }
 
-            if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
-                this._showPreview(
-                    this._monitorArea.x,
-                    this._monitorArea.y,
-                    this._monitorArea.width,
-                    this._monitorArea.height
-                );
-            }
-            else if (this._isEdge(WindowEdgeAction.GESTURE_LEFT)) {
-                this._showPreview(
-                    this._monitorArea.x
-                    + this._monitorArea.width
-                    - this._startWinArea.width,
-                    this._startWinArea.y,
-                    this._startWinArea.width,
-                    this._startWinArea.height
-                );
-            }
-            else if (this._isEdge(WindowEdgeAction.GESTURE_RIGHT)) {
-                this._showPreview(
-                    this._monitorArea.x,
-                    this._startWinArea.y,
-                    this._startWinArea.width,
-                    this._startWinArea.height
-                );
+            if (this._edgeGestured) {
+                if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
+                    this._showPreview(
+                        this._monitorArea.x,
+                        this._monitorArea.y,
+                        this._monitorArea.width,
+                        this._monitorArea.height
+                    );
+                }
+                else if (this._isEdge(WindowEdgeAction.GESTURE_LEFT)) {
+                    this._showPreview(
+                        this._monitorArea.x
+                        + this._monitorArea.width
+                        - this._startWinArea.width,
+                        this._startWinArea.y,
+                        this._startWinArea.width,
+                        this._startWinArea.height
+                    );
+                }
+                else if (this._isEdge(WindowEdgeAction.GESTURE_RIGHT)) {
+                    this._showPreview(
+                        this._monitorArea.x,
+                        this._startWinArea.y,
+                        this._startWinArea.width,
+                        this._startWinArea.height
+                    );
+                }
+                else if (this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
+                    this._showPreview(
+                        this._monitorArea.x + (this._monitorArea.width / 4),
+                        this._monitorArea.y + (this._monitorArea.height / 4),
+                        this._monitorArea.width / 2,
+                        this._monitorArea.height / 2
+                    );
+                }
             }
         }
 
@@ -463,7 +492,15 @@ export default class Extension {
 
             }
             else if (this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
-                // Un-Fullscreen
+                // Un-Fullscreen & Un-Maximize
+                if (this._targetWindow.is_fullscreen()) {
+                    this._targetWindow.unmake_fullscreen();
+                }
+                else if (this._targetWindow.get_maximized()) {
+                    this._targetWindow.unmaximize(
+                        Meta.MaximizeFlags.BOTH
+                    );
+                }
             }
             else if (this._isEdge(WindowEdgeAction.GESTURE_LEFT)) {
                 // Move to right workspace
