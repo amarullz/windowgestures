@@ -21,14 +21,21 @@ import Meta from 'gi://Meta';
 
 // Window edge action
 const WindowEdgeAction = {
-    NONE: 0, // No action
-    WAIT_GESTURE: 1, // Wait for gesture flag
-    MOVE: 2,   // Move flag
-    RESIZE: 4, // Resize flag
+    NONE: 0,                // No action
+    WAIT_GESTURE: 0x01,     // Wait for gesture flag
+    MOVE: 0x02,             // Move flag
+    RESIZE: 0x04,           // Resize flag
+
+    GESTURE_LEFT: 0x10,     // Gesture Left
+    GESTURE_RIGHT: 0x20,    // Gesture Right
+    GESTURE_UP: 0x40,       // Gesture Up
+    GESTURE_DOWN: 0x80,     // Gesture Down
+
     RESIZE_LEFT: 0x100,
     RESIZE_RIGHT: 0x200,
-    RESIZE_BOTTOM: 0x400,
-    RESIZE_TOP: 0x800
+    RESIZE_TOP: 0x400,
+    RESIZE_BOTTOM: 0x800
+
 };
 
 export default class Extension {
@@ -77,9 +84,31 @@ export default class Extension {
         return 64;
     }
 
+    // Get gesture threshold
+    _gestureThreshold() {
+        return 32;
+    }
+
     // Check edge flags
     _isEdge(edge) {
         return ((this._edgeAction & edge) == edge);
+    }
+
+    // Show Preview
+    _showPreview(rx, ry, rw, rh) {
+        if (this._targetWindow == null) {
+            return;
+        }
+        global.window_manager.emit("show-tile-preview",
+            this._targetWindow, new Meta.Rectangle(
+                { x: rx, y: ry, width: rw, height: rh }
+            ), this._monitorId
+        );
+    }
+
+    // Hide Preview
+    _hidePreview() {
+        global.window_manager.emit("hide-tile-preview");
     }
 
     // Initialize variables
@@ -97,6 +126,9 @@ export default class Extension {
             x: 0, y: 0
         };
 
+        // Monitor Id
+        this._monitorId = 0;
+
         // Monitor Workarea
         this._monitorArea = null;
 
@@ -105,6 +137,10 @@ export default class Extension {
 
         // Edge Action
         this._edgeAction = WindowEdgeAction.NONE;
+        this._edgeGestured = false;
+
+        // Clear window tile preview
+        this._hidePreview();
     }
 
     // On touch gesture started
@@ -139,12 +175,6 @@ export default class Extension {
             this._targetWindow = this._targetWindow.get_transient_for();
         }
 
-        // Ignore unmoveable window
-        if (!this._targetWindow.allows_move()) {
-            this._targetWindow = null;
-            return Clutter.EVENT_PROPAGATE;
-        }
-
         // Save start position
         this._startPos.x = pointerX;
         this._startPos.y = pointerY;
@@ -161,6 +191,13 @@ export default class Extension {
 
         // Get monitor area
         this._monitorArea = this._targetWindow.get_work_area_current_monitor();
+
+        // Get monitor id
+        // this._posRect.x = pointerX;
+        // this._posRect.y = pointerY;
+        this._monitorId = global.display.get_monitor_index_for_rect(
+            this._monitorArea
+        );
 
         // Get start frame rectangle
         this._startWinArea = this._targetWindow.get_frame_rect();
@@ -179,9 +216,11 @@ export default class Extension {
 
         // Default edge: need move event for more actions
         this._edgeAction = WindowEdgeAction.WAIT_GESTURE;
+        this._edgeGestured = false;
 
         // Check allow resize
-        if (this._targetWindow.allows_resize()) {
+        if (this._targetWindow.allows_resize() &&
+            this._targetWindow.allows_move()) {
             // Edge cursor position detection
             if (this._startPos.y >= wBottom - edge) {
                 // Cursor on bottom of window
@@ -223,8 +262,10 @@ export default class Extension {
         }
         if (!this._isEdge(WindowEdgeAction.RESIZE)) {
             if (this._startPos.y <= wTop + topEdge) {
-                // Mouse in top side of window
-                this._edgeAction = WindowEdgeAction.MOVE;
+                if (this._targetWindow.allows_move()) {
+                    // Mouse in top side of window
+                    this._edgeAction = WindowEdgeAction.MOVE;
+                }
             }
         }
 
@@ -247,11 +288,6 @@ export default class Extension {
         // Set event time
         const currentTime = global.get_current_time();
 
-        // Move cursor pointer
-        this._virtualTouchpad.notify_relative_motion(
-            currentTime, dx, dy
-        );
-
         // Moving coordinat
         this._movePos.x += dx;
         this._movePos.y += dy;
@@ -262,7 +298,13 @@ export default class Extension {
         let wRight = wLeft + this._startWinArea.width;
         let wBottom = wTop + this._startWinArea.height;
 
+
         if (this._isEdge(WindowEdgeAction.MOVE)) {
+            // Move cursor pointer
+            this._virtualTouchpad.notify_relative_motion(
+                currentTime, dx, dy
+            );
+
             // Move action
             this._targetWindow.move_frame(
                 true,
@@ -271,6 +313,11 @@ export default class Extension {
             );
         }
         else if (this._isEdge(WindowEdgeAction.RESIZE)) {
+            // Move cursor pointer
+            this._virtualTouchpad.notify_relative_motion(
+                currentTime, dx, dy
+            );
+
             // Resize actions
             let tX = this._startWinArea.x;
             let tY = this._startWinArea.y;
@@ -297,13 +344,99 @@ export default class Extension {
                 tX, tY, tW, tH
             );
         }
+        else if (this._isEdge(WindowEdgeAction.WAIT_GESTURE)) {
+            let threshold = this._gestureThreshold();
+            let absX = Math.abs(this._movePos.x);
+            let absY = Math.abs(this._movePos.y);
+
+            if (absX >= threshold || absY >= threshold) {
+                if (absX > absY) {
+                    if (this._movePos.x < 0) {
+                        this._edgeAction |= WindowEdgeAction.GESTURE_LEFT;
+                        this._movePos.x = 0 - (threshold + 5);
+                        this._movePos.y = 0;
+                    }
+                    else {
+                        this._edgeAction |= WindowEdgeAction.GESTURE_RIGHT;
+                        this._movePos.x = (threshold + 5);
+                        this._movePos.y = 0;
+                    }
+                    this._edgeGestured = true;
+                }
+                else {
+                    if (this._movePos.y < 0) {
+                        this._edgeAction |= WindowEdgeAction.GESTURE_UP;
+                        this._edgeGestured = true;
+                        this._movePos.y = 0 - (threshold + 5);
+                        this._movePos.x = 0;
+                    }
+                    else if (!this._edgeGestured) {
+                        if (this._targetWindow.get_maximized()) {
+                            this._targetWindow.unmaximize(
+                                Meta.MaximizeFlags.BOTH
+                            );
+                        }
+                        if (this._targetWindow.allows_move()) {
+                            this._edgeAction = WindowEdgeAction.MOVE;
+                        }
+                        else {
+                            this._edgeAction |= WindowEdgeAction.GESTURE_DOWN;
+                            this._edgeGestured = true;
+                            this._movePos.y = (threshold + 5);
+                            this._movePos.x = 0;
+                        }
+                    }
+                    else {
+                        if (this._edgeAction != WindowEdgeAction.WAIT_GESTURE) {
+                            this._hidePreview();
+                        }
+                        this._edgeAction = WindowEdgeAction.WAIT_GESTURE;
+                        this._movePos.y = 0;
+                        this._movePos.x = 0;
+                    }
+                }
+            }
+            else {
+                if (this._edgeAction != WindowEdgeAction.WAIT_GESTURE) {
+                    this._hidePreview();
+                }
+                this._edgeAction = WindowEdgeAction.WAIT_GESTURE;
+            }
+
+            if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
+                this._showPreview(
+                    this._monitorArea.x,
+                    this._monitorArea.y,
+                    this._monitorArea.width,
+                    this._monitorArea.height
+                );
+            }
+            else if (this._isEdge(WindowEdgeAction.GESTURE_LEFT)) {
+                this._showPreview(
+                    this._monitorArea.x
+                    + this._monitorArea.width
+                    - this._startWinArea.width,
+                    this._startWinArea.y,
+                    this._startWinArea.width,
+                    this._startWinArea.height
+                );
+            }
+            else if (this._isEdge(WindowEdgeAction.GESTURE_RIGHT)) {
+                this._showPreview(
+                    this._monitorArea.x,
+                    this._startWinArea.y,
+                    this._startWinArea.width,
+                    this._startWinArea.height
+                );
+            }
+        }
 
         return Clutter.EVENT_STOP;
     }
 
     // On touch gesture ended
     _touchEnd() {
-
+        this._clearVars();
     }
 
     // Touch Event Handler
