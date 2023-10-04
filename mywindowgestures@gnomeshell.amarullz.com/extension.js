@@ -22,11 +22,13 @@ import Meta from 'gi://Meta';
 // Window edge action
 const WindowEdgeAction = {
     NONE: 0, // No action
-    WAIT_GESTURE: 1, // Mouse is in center of window
-    MOVE: 2,   // Move action
-    RESIZE_LEFT: 3,   // Mouse in left side of window
-    RESIZE_RIGHT: 4,   // Mouse in right side of window
-    RESIZE_BOTTOM: 5   // Mouse in bottom side of window 
+    WAIT_GESTURE: 1, // Wait for gesture flag
+    MOVE: 2,   // Move flag
+    RESIZE: 3, // Resize flag
+    RESIZE_LEFT: 0x100,
+    RESIZE_RIGHT: 0x200,
+    RESIZE_BOTTOM: 0x400,
+    RESIZE_TOP: 0x800
 };
 
 export default class Extension {
@@ -163,6 +165,8 @@ export default class Extension {
         let wTop = this._startWinArea.y;
         let wRight = wLeft + this._startWinArea.width;
         let wBottom = wTop + this._startWinArea.height;
+        let wMidX = wLeft + (this._startWinArea.width / 2);
+        let wMidY = wLeft + (this._startWinArea.height / 2);
 
         // Detect window edge
         let edge = this._edgeSize();
@@ -177,16 +181,35 @@ export default class Extension {
         }
         else if (this._targetWindow.allows_resize()) {
             if (this._startPos.y >= wBottom - edge) {
-                // Mouse in bottom side of window
-                this._edgeAction = WindowEdgeAction.RESIZE_BOTTOM;
+                this._edgeAction =
+                    WindowEdgeAction.RESIZE |
+                    WindowEdgeAction.RESIZE_BOTTOM;
+                if (this._startPos.x <= wMidX) {
+                    this._edgeAction |= WindowEdgeAction.RESIZE_LEFT;
+                }
+                else {
+                    this._edgeAction |= WindowEdgeAction.RESIZE_RIGHT;
+                }
             }
-            else if (this._startPos.x <= wLeft + edge) {
-                // Mouse in bottom side of window
-                this._edgeAction = WindowEdgeAction.RESIZE_LEFT;
-            }
-            else if (this._startPos.x >= wRight - edge) {
-                // Mouse in bottom side of window
-                this._edgeAction = WindowEdgeAction.RESIZE_RIGHT;
+            else {
+                if (this._startPos.x <= wLeft + edge) {
+                    this._edgeAction =
+                        WindowEdgeAction.RESIZE |
+                        WindowEdgeAction.RESIZE_LEFT;
+                }
+                else if (this._startPos.x >= wRight - edge) {
+                    this._edgeAction =
+                        WindowEdgeAction.RESIZE |
+                        WindowEdgeAction.RESIZE_RIGHT;
+                }
+                if (this._edgeAction & WindowEdgeAction.RESIZE) {
+                    if (this._startPos.y <= wMidY) {
+                        this._edgeAction |= WindowEdgeAction.RESIZE_TOP;
+                    }
+                    else {
+                        this._edgeAction |= WindowEdgeAction.RESIZE_BOTTOM;
+                    }
+                }
             }
         }
 
@@ -231,34 +254,30 @@ export default class Extension {
                 this._startWinArea.y + this._movePos.y
             );
         }
-        else if (this._edgeAction == WindowEdgeAction.RESIZE_BOTTOM) {
-            // Resize Bottom
+        else if (this._edgeAction & WindowEdgeAction.RESIZE) {
+            let tX = this._startWinArea.x;
+            let tY = this._startWinArea.y;
+            let tW = this._startWinArea.width;
+            let tH = this._startWinArea.height;
+
+            if (this._edgeAction & WindowEdgeAction.RESIZE_BOTTOM) {
+                tH += this._movePos.y;
+            }
+            else {
+                tY += this._movePos.y;
+                tH -= this._movePos.y;
+            }
+            if (this._edgeAction & WindowEdgeAction.RESIZE_RIGHT) {
+                tW += this._movePos.x;
+            }
+            else {
+                tX += this._movePos.x;
+                tW -= this._movePos.x;
+            }
+            // Resize Window
             this._targetWindow.move_resize_frame(
                 true,
-                this._startWinArea.x,
-                this._startWinArea.y,
-                this._startWinArea.width,
-                this._startWinArea.height + this._movePos.y
-            );
-        }
-        else if (this._edgeAction == WindowEdgeAction.RESIZE_RIGHT) {
-            // Resize right
-            this._targetWindow.move_resize_frame(
-                true,
-                this._startWinArea.x,
-                this._startWinArea.y,
-                this._startWinArea.width + this._movePos.x,
-                this._startWinArea.height
-            );
-        }
-        else if (this._edgeAction == WindowEdgeAction.RESIZE_LEFT) {
-            // Resize left
-            this._targetWindow.move_resize_frame(
-                true,
-                this._startWinArea.x - this._movePos.x,
-                this._startWinArea.y,
-                this._startWinArea.width + this._movePos.x,
-                this._startWinArea.height
+                tX, tY, tW, tH
             );
         }
 
