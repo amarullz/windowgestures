@@ -1,57 +1,58 @@
-<schemalist gettext-domain="gnome-shell-extensions">
+<?xml version="1.0" encoding="UTF-8"?>
+<schemalist>
     <schema id="org.gnome.shell.extensions.mywindowgestures"
         path="/org/gnome/shell/extensions/mywindowgestures/">
 
-    <key name="no-count-flip" type="b">
-        <default>false</default>
-        <summary>Keep System Gesture</summary>
-        <description>
-            If true, extension will not hook system gesture events but Use 3 Fingers config cannot be used. Need re-enable extension to take effect
-        </description>
-    </key>
+        <key name="no-count-flip" type="b">
+            <default>false</default>
+            <summary>Keep System Gesture</summary>
+            <description>
+                If true, extension will not hook system gesture events but Use 3 Fingers config cannot be used. Need re-enable extension to take effect
+            </description>
+        </key>
 
-    <key name="three-finger" type="b">
-        <default>false</default>
-        <summary>Use 3 Fingers</summary>
-        <description>
-            If true, window gestures will use three fingers, and workspace will use four finger
-        </description>
-    </key>
+        <key name="three-finger" type="b">
+            <default>false</default>
+            <summary>Use 3 Fingers</summary>
+            <description>
+                If true, window gestures will use three fingers, and workspace will use four finger
+            </description>
+        </key>
 
-    <key type="i" name="edge-size">
-        <default>32</default>
-        <summary>Edge Size for Resize</summary>
-        <description>
-            Number of pixel from window egdes to determine resize action
-        </description>
-        <range min="16" max="96"/>
-    </key>
+        <key type="i" name="edge-size">
+            <default>32</default>
+            <summary>Edge Size for Resize</summary>
+            <description>
+                Number of pixel from window egdes to determine resize action
+            </description>
+            <range min="16" max="96"/>
+        </key>
 
-    <key type="i" name="top-edge-size">
-        <default>64</default>
-        <summary>Title Edge size</summary>
-        <description>
-            Number of pixel from top of window to determine move action
-        </description>
-        <range min="16" max="96"/>
-    </key>
+        <key type="i" name="top-edge-size">
+            <default>64</default>
+            <summary>Title Edge size</summary>
+            <description>
+                Number of pixel from top of window to determine move action
+            </description>
+            <range min="16" max="96"/>
+        </key>
 
-    <key type="i" name="gesture-threshold">
-        <default>32</default>
-        <summary>Gesture Threshold</summary>
-        <range min="16" max="64"/>
-    </key>
+        <key type="i" name="gesture-threshold">
+            <default>32</default>
+            <summary>Gesture Threshold</summary>
+            <range min="16" max="64"/>
+        </key>
 
-    <key type="i" name="gesture-cancel-threshold">
-        <default>8</default>
-        <summary>Gesture Cancel Threshold</summary>
-        <range min="4" max="32"/>
-    </key>
+        <key type="i" name="gesture-cancel-threshold">
+            <default>8</default>
+            <summary>Gesture Cancel Threshold</summary>
+            <range min="4" max="32"/>
+        </key>
 
-    <key type="i" name="gesture-acceleration">
-        <default>15</default>
-        <summary>Gesture Acceleration</summary>
-        <range min="10" max="25"/>
-    </key>
+        <key type="i" name="gesture-acceleration">
+            <default>15</default>
+            <summary>Gesture Acceleration</summary>
+            <range min="10" max="25"/>
+        </key>
     </schema>
 </schemalist>

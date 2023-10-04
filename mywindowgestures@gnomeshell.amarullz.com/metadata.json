@@ -3,7 +3,9 @@
   "description": "Manage window with touchpad gestures",
   "uuid": "mywindowgestures@gnomeshell.amarullz.com",
   "url": "https://github.com/amarullz/gnome-extension-mywindowgestures",
+  "settings-schema": "org.gnome.shell.extensions.mywindowgestures",
   "shell-version": [
     "45"
-  ]
+  ],
+  "version": 1
 }
