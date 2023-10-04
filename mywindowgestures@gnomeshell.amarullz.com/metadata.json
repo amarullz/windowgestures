@@ -1,0 +1,8 @@
+{
+  "name": "My Window Gestures",
+  "description": "Manage window with touchpad gestures",
+  "uuid": "mywindowgestures@gnomeshell.amarullz.com",
+  "shell-version": [
+    "45"
+  ]
+}

@@ -1,0 +1,9 @@
+{
+    "editor.minimap.enabled": true,
+    "editor.rulers": [
+        80,
+        120
+    ],
+    "editor.formatOnPaste": false,
+    "editor.formatOnSave": true
+}
