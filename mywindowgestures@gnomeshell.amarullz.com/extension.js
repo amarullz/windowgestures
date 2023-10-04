@@ -31,10 +31,13 @@ const WindowEdgeAction = {
     GESTURE_UP: 0x40,       // Gesture Up
     GESTURE_DOWN: 0x80,     // Gesture Down
 
-    RESIZE_LEFT: 0x100,
-    RESIZE_RIGHT: 0x200,
-    RESIZE_TOP: 0x400,
-    RESIZE_BOTTOM: 0x800
+    GESTURE_UP_LEFT: 0x100, // Gesture Up Left
+    GESTURE_UP_RIGHT: 0x200,// Gesture Up Right
+
+    RESIZE_LEFT: 0x1000,
+    RESIZE_RIGHT: 0x2000,
+    RESIZE_TOP: 0x4000,
+    RESIZE_BOTTOM: 0x8000
 
 };
 
@@ -393,31 +396,57 @@ export default class Extension {
                 }
             }
             else {
-                let resetGesture = false;
+                let resetGesture = 0;
+                let threshold2x = threshold * 2;
                 /* Reset Gesture Detection */
                 if (this._isEdge(WindowEdgeAction.GESTURE_LEFT)) {
                     if (this._movePos.x > cancelThreshold) {
-                        resetGesture = true;
+                        resetGesture = 1;
                     }
                 }
                 else if (this._isEdge(WindowEdgeAction.GESTURE_RIGHT)) {
                     if (this._movePos.x < 0 - cancelThreshold) {
-                        resetGesture = true;
+                        resetGesture = 1;
                     }
                 }
                 else if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
                     if (this._movePos.y > cancelThreshold) {
-                        resetGesture = true;
+                        resetGesture = 1;
+                    }
+                    else {
+                        if (this._movePos.x <= 0 - threshold2x) {
+                            this._edgeAction |=
+                                WindowEdgeAction.GESTURE_UP_LEFT;
+                        }
+                        else if (this._movePos.x >= threshold2x) {
+                            this._edgeAction |=
+                                WindowEdgeAction.GESTURE_UP_RIGHT;
+                        }
+                        else {
+                            this._edgeAction = WindowEdgeAction.GESTURE_UP |
+                                WindowEdgeAction.WAIT_GESTURE;
+                        }
+                        resetGesture = 2;
                     }
                 }
                 else if (this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
                     if (this._movePos.y < 0 - cancelThreshold) {
-                        resetGesture = true;
+                        resetGesture = 1;
                     }
                 }
-                if (resetGesture) {
+                if (resetGesture == 1) {
                     this._hidePreview();
                     this._edgeAction = WindowEdgeAction.WAIT_GESTURE;
+                }
+                else if (resetGesture == 2) {
+                    /* Reset Y only */
+                    this._movePos.y = 0;
+                    if (this._movePos.x < 0 - threshold2x) {
+                        this._movePos.x = 0 - (threshold2x + 5);
+                    }
+                    else if (this._movePos.x > threshold2x) {
+                        this._movePos.x = threshold2x + 5;
+                    }
                 }
                 else {
                     /* Reset move position */
@@ -427,12 +456,30 @@ export default class Extension {
 
             if (this._edgeGestured) {
                 if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
-                    this._showPreview(
-                        this._monitorArea.x,
-                        this._monitorArea.y,
-                        this._monitorArea.width,
-                        this._monitorArea.height
-                    );
+                    if (this._isEdge(WindowEdgeAction.GESTURE_UP_LEFT)) {
+                        this._showPreview(
+                            this._monitorArea.x,
+                            this._monitorArea.y,
+                            this._monitorArea.width / 2,
+                            this._monitorArea.height
+                        );
+                    }
+                    else if (this._isEdge(WindowEdgeAction.GESTURE_UP_RIGHT)) {
+                        this._showPreview(
+                            this._monitorArea.x + (this._monitorArea.width / 2),
+                            this._monitorArea.y,
+                            this._monitorArea.width / 2,
+                            this._monitorArea.height
+                        );
+                    }
+                    else {
+                        this._showPreview(
+                            this._monitorArea.x,
+                            this._monitorArea.y,
+                            this._monitorArea.width,
+                            this._monitorArea.height
+                        );
+                    }
                 }
                 else if (this._isEdge(WindowEdgeAction.GESTURE_LEFT)) {
                     this._showPreview(
