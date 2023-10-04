@@ -167,7 +167,7 @@ export default class Extension {
 
     // Is 3 Finger
     _gestureNumFinger() {
-        return 3;
+        return 4;
     }
 
     // Check edge flags
@@ -334,8 +334,10 @@ export default class Extension {
         let wTop = this._startWinArea.y;
         let wRight = wLeft + this._startWinArea.width;
         let wBottom = wTop + this._startWinArea.height;
-        let wMidX = wLeft + (this._startWinArea.width / 2);
-        let wMidY = wTop + (this._startWinArea.height / 2);
+        let wThirdX = wLeft + (this._startWinArea.width / 3);
+        let wThirdY = wTop + (this._startWinArea.height / 3);
+        let w34X = wLeft + ((this._startWinArea.width / 3) * 2);
+        let w34Y = wTop + ((this._startWinArea.height / 3) * 2);
 
         // Detect window edge
         let edge = this._edgeSize();
@@ -355,11 +357,11 @@ export default class Extension {
                     WindowEdgeAction.RESIZE |
                     WindowEdgeAction.RESIZE_BOTTOM;
 
-                // Half left / right
-                if (this._startPos.x <= wMidX) {
+                // 1/3 from left|right
+                if (this._startPos.x <= wThirdX) {
                     this._edgeAction |= WindowEdgeAction.RESIZE_LEFT;
                 }
-                else {
+                else if (this._startPos.x >= w34X) {
                     this._edgeAction |= WindowEdgeAction.RESIZE_RIGHT;
                 }
             }
@@ -377,11 +379,11 @@ export default class Extension {
                         WindowEdgeAction.RESIZE_RIGHT;
                 }
                 if (this._isEdge(WindowEdgeAction.RESIZE)) {
-                    // Half top / bottom
-                    if (this._startPos.y <= wMidY) {
+                    // 1/3 from top|bottom
+                    if (this._startPos.y <= wThirdY) {
                         this._edgeAction |= WindowEdgeAction.RESIZE_TOP;
                     }
-                    else {
+                    else if (this._startPos.y >= w34Y) {
                         this._edgeAction |= WindowEdgeAction.RESIZE_BOTTOM;
                     }
                 }
@@ -442,7 +444,11 @@ export default class Extension {
         else if (this._isEdge(WindowEdgeAction.RESIZE)) {
             // Move cursor pointer
             this._virtualTouchpad.notify_relative_motion(
-                currentTime, dx, dy
+                currentTime,
+                (this._isEdge(WindowEdgeAction.RESIZE_LEFT) ||
+                    this._isEdge(WindowEdgeAction.RESIZE_RIGHT)) ? dx : 0,
+                (this._isEdge(WindowEdgeAction.RESIZE_TOP) ||
+                    this._isEdge(WindowEdgeAction.RESIZE_BOTTOM)) ? dy : 0
             );
 
             // Resize actions
@@ -454,14 +460,14 @@ export default class Extension {
             if (this._isEdge(WindowEdgeAction.RESIZE_BOTTOM)) {
                 tH += this._movePos.y;
             }
-            else {
+            else if (this._isEdge(WindowEdgeAction.RESIZE_TOP)) {
                 tY += this._movePos.y;
                 tH -= this._movePos.y;
             }
             if (this._isEdge(WindowEdgeAction.RESIZE_RIGHT)) {
                 tW += this._movePos.x;
             }
-            else {
+            else if (this._isEdge(WindowEdgeAction.RESIZE_LEFT)) {
                 tX += this._movePos.x;
                 tW -= this._movePos.x;
             }
