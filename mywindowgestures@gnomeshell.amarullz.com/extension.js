@@ -413,7 +413,9 @@ export default class Extension {
                     if (this._movePos.y > cancelThreshold) {
                         resetGesture = 1;
                     }
-                    else {
+                    else if (!this._targetWindow.is_fullscreen() &&
+                        !this._targetWindow.get_maximized()) {
+                        // Tile Left / Right if not maximize / fullscreen
                         if (this._movePos.x <= 0 - threshold2x) {
                             this._edgeAction |=
                                 WindowEdgeAction.GESTURE_UP_LEFT;
