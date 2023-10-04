@@ -341,8 +341,6 @@ export default class Extension {
         this._monitorArea = this._targetWindow.get_work_area_current_monitor();
 
         // Get monitor id
-        // this._posRect.x = pointerX;
-        // this._posRect.y = pointerY;
         this._monitorId = global.display.get_monitor_index_for_rect(
             this._monitorArea
         );
@@ -412,7 +410,8 @@ export default class Extension {
         }
         if (!this._isEdge(WindowEdgeAction.RESIZE)) {
             if (this._startPos.y <= wTop + topEdge) {
-                if (this._targetWindow.allows_move()) {
+                if (this._targetWindow.allows_move() &&
+                    !this._targetWindow.get_maximized()) {
                     // Mouse in top side of window
                     this._edgeAction = WindowEdgeAction.MOVE;
                 }
