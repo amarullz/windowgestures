@@ -371,6 +371,9 @@ export default class Extension {
                         this._movePos.x = 0;
                     }
                     else if (!this._edgeGestured) {
+                        if (this._targetWindow.is_fullscreen()) {
+                            this._targetWindow.unmake_fullscreen();
+                        }
                         if (this._targetWindow.get_maximized()) {
                             this._targetWindow.unmaximize(
                                 Meta.MaximizeFlags.BOTH
@@ -436,7 +439,42 @@ export default class Extension {
 
     // On touch gesture ended
     _touchEnd() {
+        /* No target window? return directly */
+        if (this._targetWindow == null) {
+            this._clearVars();
+            return Clutter.EVENT_STOP;
+        }
+
+        /* Check Gestures */
+        if (this._isEdge(WindowEdgeAction.WAIT_GESTURE)) {
+            if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
+                // Maximize / Fullscreen
+                if (this._targetWindow.get_maximized()) {
+                    if (!this._targetWindow.is_fullscreen()) {
+                        this._targetWindow.make_fullscreen();
+                    }
+                    else {
+                        this._targetWindow.unmake_fullscreen();
+                    }
+                }
+                else if (this._targetWindow.can_maximize()) {
+                    this._targetWindow.maximize(Meta.MaximizeFlags.BOTH);
+                }
+
+            }
+            else if (this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
+                // Un-Fullscreen
+            }
+            else if (this._isEdge(WindowEdgeAction.GESTURE_LEFT)) {
+                // Move to right workspace
+            }
+            else if (this._isEdge(WindowEdgeAction.GESTURE_RIGHT)) {
+                // Move to left workspace
+            }
+        }
         this._clearVars();
+
+        return Clutter.EVENT_STOP;
     }
 
     // Touch Event Handler
