@@ -41,7 +41,11 @@ const WindowEdgeAction = {
     RESIZE_LEFT: 0x1000,
     RESIZE_RIGHT: 0x2000,
     RESIZE_TOP: 0x4000,
-    RESIZE_BOTTOM: 0x8000
+    RESIZE_BOTTOM: 0x8000,
+
+    MOVE_SNAP_TOP: 0x10000,
+    MOVE_SNAP_LEFT: 0x20000,
+    MOVE_SNAP_RIGHT: 0x40000
 
 };
 
@@ -160,9 +164,13 @@ export default class Extension {
         return 32;
     }
 
+    _getAcceleration() {
+        return 1.2;
+    }
+
     // Get gesture threshold
     _gestureCancelThreshold() {
-        return 10;
+        return 5;
     }
 
     // Is 3 Finger
@@ -268,6 +276,19 @@ export default class Extension {
 
         // Clear window tile preview
         this._hidePreview();
+    }
+
+    _resetWinPos() {
+        if (this._targetWindow == null) {
+            return;
+        }
+
+        // Reset
+        this._targetWindow.move_frame(
+            true,
+            this._startWinArea.x,
+            this._startWinArea.y
+        );
     }
 
     // On touch gesture started
@@ -424,8 +445,8 @@ export default class Extension {
         // Window area as local value
         let wLeft = this._startWinArea.x;
         let wTop = this._startWinArea.y;
-        let wRight = wLeft + this._startWinArea.width;
-        let wBottom = wTop + this._startWinArea.height;
+        // let wRight = wLeft + this._startWinArea.width;
+        // let wBottom = wTop + this._startWinArea.height;
 
 
         if (this._isEdge(WindowEdgeAction.MOVE)) {
@@ -433,6 +454,53 @@ export default class Extension {
             this._virtualTouchpad.notify_relative_motion(
                 currentTime, dx, dy
             );
+
+            let edge = this._edgeSize();
+
+            let mX = this._monitorArea.x;
+            let mY = this._monitorArea.y;
+            let mW = this._monitorArea.width;
+            let mH = this._monitorArea.height;
+            let mR = mX + mW;
+            let mB = mY + mH;
+
+            let [pointerX, pointerY, pointerZ] = global.get_pointer();
+
+            if (pointerX >= mX && pointerX <= mX + edge) {
+                this._showPreview(
+                    this._monitorArea.x,
+                    this._monitorArea.y,
+                    this._monitorArea.width / 2,
+                    this._monitorArea.height
+                );
+                this._edgeAction = WindowEdgeAction.MOVE
+                    | WindowEdgeAction.MOVE_SNAP_LEFT;
+            }
+            else if (pointerX <= mR && pointerX >= mR - edge) {
+                this._showPreview(
+                    this._monitorArea.x + (this._monitorArea.width / 2),
+                    this._monitorArea.y,
+                    this._monitorArea.width / 2,
+                    this._monitorArea.height
+                );
+                this._edgeAction = WindowEdgeAction.MOVE
+                    | WindowEdgeAction.MOVE_SNAP_RIGHT;
+            }
+            else if (pointerY >= mY - edge && pointerY <= mY + edge) {
+                this._showPreview(
+                    this._monitorArea.x,
+                    this._monitorArea.y,
+                    this._monitorArea.width,
+                    this._monitorArea.height
+                );
+                this._edgeAction = WindowEdgeAction.MOVE
+                    | WindowEdgeAction.MOVE_SNAP_TOP;
+            }
+            else {
+                this._edgeAction = WindowEdgeAction.MOVE;
+                this._hidePreview();
+            }
+
 
             // Move action
             this._targetWindow.move_frame(
@@ -471,6 +539,34 @@ export default class Extension {
                 tX += this._movePos.x;
                 tW -= this._movePos.x;
             }
+
+            let tR = tX + tW;
+            let tB = tY + tH;
+
+            let mX = this._monitorArea.x;
+            let mY = this._monitorArea.y;
+            let mW = this._monitorArea.width;
+            let mH = this._monitorArea.height;
+            let mR = mX + mW;
+            let mB = mY + mH;
+
+            // edge
+            if (tX < mX) {
+                tX = mX;
+                tW = tR - tX;
+            }
+            if (tY < mY) {
+                tY = mY;
+                tH = tB - tY;
+            }
+            if (tR > mR) {
+                tW = mR - tX;
+            }
+            if (tB > mB) {
+                tH = mB - tY;
+            }
+
+
             // Resize Window
             this._targetWindow.move_resize_frame(
                 true,
@@ -479,7 +575,6 @@ export default class Extension {
         }
         else if (this._isEdge(WindowEdgeAction.WAIT_GESTURE)) {
             let threshold = this._gestureThreshold();
-            let cancelThreshold = this._gestureCancelThreshold();
             let absX = Math.abs(this._movePos.x);
             let absY = Math.abs(this._movePos.y);
 
@@ -524,6 +619,7 @@ export default class Extension {
                 }
             }
             else {
+                let cancelThreshold = this._gestureCancelThreshold();
                 let resetGesture = 0;
                 let threshold2x = threshold * 2;
                 /* Reset Gesture Detection */
@@ -697,6 +793,22 @@ export default class Extension {
                 this._moveWindowWorkspace(0);
             }
         }
+        else if (this._isEdge(WindowEdgeAction.MOVE)) {
+            if (this._isEdge(WindowEdgeAction.MOVE_SNAP_TOP)) {
+                if (this._targetWindow.can_maximize()) {
+                    this._resetWinPos();
+                    this._targetWindow.maximize(Meta.MaximizeFlags.BOTH);
+                }
+            }
+            else if (this._isEdge(WindowEdgeAction.MOVE_SNAP_LEFT)) {
+                this._resetWinPos();
+                this._setSnapWindow(0);
+            }
+            else if (this._isEdge(WindowEdgeAction.MOVE_SNAP_RIGHT)) {
+                this._resetWinPos();
+                this._setSnapWindow(1);
+            }
+        }
         this._clearVars();
 
         return Clutter.EVENT_STOP;
@@ -722,7 +834,10 @@ export default class Extension {
             case Clutter.TouchpadGesturePhase.UPDATE:
                 // Update / move event
                 let [dx, dy] = event.get_gesture_motion_delta();
-                return this._touchUpdate(dx, dy);
+                return this._touchUpdate(
+                    dx * this._getAcceleration(),
+                    dy * this._getAcceleration()
+                );
 
             default:
                 // Cancel / end event
