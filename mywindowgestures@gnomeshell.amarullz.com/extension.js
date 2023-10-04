@@ -119,6 +119,50 @@ export default class Extension {
         global.window_manager.emit("hide-tile-preview");
     }
 
+    // Simulate keypress (up -> down)
+    _sendKeyPress(combination) {
+        const currentTime = global.get_current_time();
+        combination.forEach(key => this._virtualKeyboard.notify_keyval(
+            currentTime, key, Clutter.KeyState.PRESSED)
+        );
+        combination.reverse().forEach(key =>
+            this._virtualKeyboard.notify_keyval(
+                currentTime, key, Clutter.KeyState.RELEASED
+            ));
+    }
+
+    // Snap Window
+    _setSnapWindow(snapRight) {
+        if (this._targetWindow == null) {
+            return;
+        }
+        // TODO: Using non key shortcut for snap left/right
+        if (snapRight) {
+            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_Right]);
+        }
+        else {
+            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_Left]);
+        }
+    }
+
+    // Move to Workspace
+    _moveWindowWorkspace(moveRight) {
+        if (this._targetWindow == null) {
+            return;
+        }
+        let tw = this._targetWindow.get_workspace()
+            .get_neighbor(moveRight ? Meta.MotionDirection.RIGHT :
+                Meta.MotionDirection.LEFT);
+        this._targetWindow.change_workspace(tw);
+        this._targetWindow.get_workspace().activate(global.get_current_time());
+
+        // // let currWorkspace = this._targetWindow.get_workspace();
+        // // let currWorkspaceId = currWorkspace.get_neighbor(direction);
+        // // let targetWorkspaceId = currWorkspaceId + ();
+        // this._targetWindow.change_workspace_by_index(moveRight ? 1 : -1, true);
+        // this._targetWindow.get_workspace().activate(global.get_current_time());
+    }
+
     // Initialize variables
     _clearVars() {
         // Target window to manage
@@ -414,7 +458,8 @@ export default class Extension {
                         resetGesture = 1;
                     }
                     else if (!this._targetWindow.is_fullscreen() &&
-                        !this._targetWindow.get_maximized()) {
+                        (this._targetWindow.get_maximized()
+                            != Meta.MaximizeFlags.BOTH)) {
                         // Tile Left / Right if not maximize / fullscreen
                         if (this._movePos.x <= 0 - threshold2x) {
                             this._edgeAction |=
@@ -527,7 +572,8 @@ export default class Extension {
         if (this._isEdge(WindowEdgeAction.WAIT_GESTURE)) {
             if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
                 // Maximize / Fullscreen
-                if (this._targetWindow.get_maximized()) {
+                if (this._targetWindow.get_maximized() ==
+                    Meta.MaximizeFlags.BOTH) {
                     if (!this._targetWindow.is_fullscreen()) {
                         this._targetWindow.make_fullscreen();
                     }
@@ -536,9 +582,16 @@ export default class Extension {
                     }
                 }
                 else if (this._targetWindow.can_maximize()) {
-                    this._targetWindow.maximize(Meta.MaximizeFlags.BOTH);
+                    if (this._isEdge(WindowEdgeAction.GESTURE_UP_LEFT)) {
+                        this._setSnapWindow(0);
+                    }
+                    else if (this._isEdge(WindowEdgeAction.GESTURE_UP_RIGHT)) {
+                        this._setSnapWindow(1);
+                    }
+                    else {
+                        this._targetWindow.maximize(Meta.MaximizeFlags.BOTH);
+                    }
                 }
-
             }
             else if (this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
                 // Un-Fullscreen & Un-Maximize
@@ -553,9 +606,11 @@ export default class Extension {
             }
             else if (this._isEdge(WindowEdgeAction.GESTURE_LEFT)) {
                 // Move to right workspace
+                this._moveWindowWorkspace(1);
             }
             else if (this._isEdge(WindowEdgeAction.GESTURE_RIGHT)) {
                 // Move to left workspace
+                this._moveWindowWorkspace(0);
             }
         }
         this._clearVars();
