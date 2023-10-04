@@ -18,6 +18,7 @@
 
 import Clutter from 'gi://Clutter';
 import Meta from 'gi://Meta';
+// import GLib from 'gi://GLib';
 
 // Window edge action
 const WindowEdgeAction = {
@@ -154,13 +155,15 @@ export default class Extension {
             .get_neighbor(moveRight ? Meta.MotionDirection.RIGHT :
                 Meta.MotionDirection.LEFT);
         this._targetWindow.change_workspace(tw);
-        this._targetWindow.get_workspace().activate(global.get_current_time());
+        this._targetWindow.activate(global.get_current_time());
+    }
 
-        // // let currWorkspace = this._targetWindow.get_workspace();
-        // // let currWorkspaceId = currWorkspace.get_neighbor(direction);
-        // // let targetWorkspaceId = currWorkspaceId + ();
-        // this._targetWindow.change_workspace_by_index(moveRight ? 1 : -1, true);
-        // this._targetWindow.get_workspace().activate(global.get_current_time());
+    // Have Left Workspace
+    _workspaceHavePrev() {
+        if (this._targetWindow == null) {
+            return false;
+        }
+        return (this._targetWindow.get_workspace().index() > 0);
     }
 
     // Initialize variables
@@ -410,8 +413,11 @@ export default class Extension {
                             this._edgeGestured = true;
                         }
                         else if (this._movePos.x > threshold) {
-                            this._edgeAction |= WindowEdgeAction.GESTURE_RIGHT;
-                            this._edgeGestured = true;
+                            if (this._workspaceHavePrev()) {
+                                this._edgeAction |=
+                                    WindowEdgeAction.GESTURE_RIGHT;
+                                this._edgeGestured = true;
+                            }
                         }
                     }
                     else {
