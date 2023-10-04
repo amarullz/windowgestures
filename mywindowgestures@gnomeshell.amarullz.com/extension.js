@@ -20,6 +20,9 @@ import Clutter from 'gi://Clutter';
 import Meta from 'gi://Meta';
 // import GLib from 'gi://GLib';
 
+import * as Main from 'resource:///org/gnome/shell/ui/main.js';
+
+
 // Window edge action
 const WindowEdgeAction = {
     NONE: 0,                // No action
@@ -63,10 +66,16 @@ export default class Extension {
             'captured-event::touchpad',
             this._touchEvent.bind(this)
         );
+
+        // init 3 or 4 fingers config support
+        this._initFingerCountFlip();
     }
 
     // Disable Extension
     disable() {
+        // restore default GNOME 3 fingers gesture
+        this._restoreFingerCountFlip();
+
         // Release Touchpad Event Capture
         global.stage.disconnect(this._gestureCallbackID);
 
@@ -76,6 +85,64 @@ export default class Extension {
 
         // Cleanup all variables
         this._clearVars();
+    }
+
+    // Init 3 or 4 finger count switch mode
+    _initFingerCountFlip() {
+        // Move 3-4 Finger Gesture
+        /*
+         * Original Hook Logic From (swap-finger-gestures):
+         * https://github.com/icedman/swap-finger-gestures-3-4
+         * 
+         */
+        this._swipeMods = [
+            Main.overview._swipeTracker._touchpadGesture,
+            Main.wm._workspaceAnimation._swipeTracker._touchpadGesture,
+            Main.overview._overview._controls
+                ._workspacesDisplay._swipeTracker._touchpadGesture,
+            // Main.overview._overview._controls
+            //     ._appDisplay._swipeTracker._touchpadGesture
+        ];
+        let me = this;
+        this._swipeMods.forEach((g) => {
+            g._newHandleEvent = (actor, event) => {
+                event._get_touchpad_gesture_finger_count =
+                    event.get_touchpad_gesture_finger_count;
+                event.get_touchpad_gesture_finger_count = () => {
+                    var real_count = event._get_touchpad_gesture_finger_count();
+                    if (real_count == me._gestureNumFinger()) {
+                        return 0;
+                    }
+                    else if (real_count >= 3) {
+                        /* Default GNOME 3 finger gesture */
+                        return 3;
+                    }
+                    /* Ignore next */
+                    return 0;
+                };
+                return g._handleEvent(actor, event);
+            };
+            global.stage.disconnectObject(g);
+            global.stage.connectObject(
+                'captured-event::touchpad',
+                g._newHandleEvent.bind(g),
+                g
+            );
+        });
+    }
+
+    // Restore 3 or 4 finger count switch mode
+    _restoreFingerCountFlip() {
+        // Restore 3 finger gesture
+        this._swipeMods.forEach((g) => {
+            global.stage.disconnectObject(g);
+            global.stage.connectObject(
+                'captured-event::touchpad',
+                g._handleEvent.bind(g),
+                g
+            );
+        });
+        this._swipeMods = [];
     }
 
     // Get padding edge size
@@ -96,6 +163,11 @@ export default class Extension {
     // Get gesture threshold
     _gestureCancelThreshold() {
         return 10;
+    }
+
+    // Is 3 Finger
+    _gestureNumFinger() {
+        return 3;
     }
 
     // Check edge flags
@@ -630,8 +702,9 @@ export default class Extension {
         if (event.type() != Clutter.EventType.TOUCHPAD_SWIPE)
             return Clutter.EVENT_PROPAGATE;
 
-        // Only process 4 finger gesture
-        if (event.get_touchpad_gesture_finger_count() != 4)
+        // Only process configured finger gesture
+        if (event.get_touchpad_gesture_finger_count()
+            != this._gestureNumFinger())
             return Clutter.EVENT_PROPAGATE;
 
         // Process gestures state
