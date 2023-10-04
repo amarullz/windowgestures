@@ -24,7 +24,7 @@ const WindowEdgeAction = {
     NONE: 0, // No action
     WAIT_GESTURE: 1, // Wait for gesture flag
     MOVE: 2,   // Move flag
-    RESIZE: 3, // Resize flag
+    RESIZE: 4, // Resize flag
     RESIZE_LEFT: 0x100,
     RESIZE_RIGHT: 0x200,
     RESIZE_BOTTOM: 0x400,
@@ -75,6 +75,11 @@ export default class Extension {
     // Get top padding edge size
     _topEdgeSize() {
         return 64;
+    }
+
+    // Check edge flags
+    _isEdge(edge) {
+        return ((this._edgeAction & edge) == edge);
     }
 
     // Initialize variables
@@ -166,7 +171,7 @@ export default class Extension {
         let wRight = wLeft + this._startWinArea.width;
         let wBottom = wTop + this._startWinArea.height;
         let wMidX = wLeft + (this._startWinArea.width / 2);
-        let wMidY = wLeft + (this._startWinArea.height / 2);
+        let wMidY = wTop + (this._startWinArea.height / 2);
 
         // Detect window edge
         let edge = this._edgeSize();
@@ -175,15 +180,16 @@ export default class Extension {
         // Default edge: need move event for more actions
         this._edgeAction = WindowEdgeAction.WAIT_GESTURE;
 
-        if (this._startPos.y <= wTop + topEdge) {
-            // Mouse in top side of window
-            this._edgeAction = WindowEdgeAction.MOVE;
-        }
-        else if (this._targetWindow.allows_resize()) {
+        // Check allow resize
+        if (this._targetWindow.allows_resize()) {
+            // Edge cursor position detection
             if (this._startPos.y >= wBottom - edge) {
+                // Cursor on bottom of window
                 this._edgeAction =
                     WindowEdgeAction.RESIZE |
                     WindowEdgeAction.RESIZE_BOTTOM;
+
+                // Half left / right
                 if (this._startPos.x <= wMidX) {
                     this._edgeAction |= WindowEdgeAction.RESIZE_LEFT;
                 }
@@ -193,16 +199,19 @@ export default class Extension {
             }
             else {
                 if (this._startPos.x <= wLeft + edge) {
+                    // Cursor on left side of window
                     this._edgeAction =
                         WindowEdgeAction.RESIZE |
                         WindowEdgeAction.RESIZE_LEFT;
                 }
                 else if (this._startPos.x >= wRight - edge) {
+                    // Cursor on right side of window
                     this._edgeAction =
                         WindowEdgeAction.RESIZE |
                         WindowEdgeAction.RESIZE_RIGHT;
                 }
-                if (this._edgeAction & WindowEdgeAction.RESIZE) {
+                if (this._isEdge(WindowEdgeAction.RESIZE)) {
+                    // Half top / bottom
                     if (this._startPos.y <= wMidY) {
                         this._edgeAction |= WindowEdgeAction.RESIZE_TOP;
                     }
@@ -210,6 +219,12 @@ export default class Extension {
                         this._edgeAction |= WindowEdgeAction.RESIZE_BOTTOM;
                     }
                 }
+            }
+        }
+        if (!this._isEdge(WindowEdgeAction.RESIZE)) {
+            if (this._startPos.y <= wTop + topEdge) {
+                // Mouse in top side of window
+                this._edgeAction = WindowEdgeAction.MOVE;
             }
         }
 
@@ -232,11 +247,12 @@ export default class Extension {
         // Set event time
         const currentTime = global.get_current_time();
 
-        // Move pointer
+        // Move cursor pointer
         this._virtualTouchpad.notify_relative_motion(
             currentTime, dx, dy
         );
 
+        // Moving coordinat
         this._movePos.x += dx;
         this._movePos.y += dy;
 
@@ -246,7 +262,7 @@ export default class Extension {
         let wRight = wLeft + this._startWinArea.width;
         let wBottom = wTop + this._startWinArea.height;
 
-        if (this._edgeAction == WindowEdgeAction.MOVE) {
+        if (this._isEdge(WindowEdgeAction.MOVE)) {
             // Move action
             this._targetWindow.move_frame(
                 true,
@@ -254,20 +270,21 @@ export default class Extension {
                 this._startWinArea.y + this._movePos.y
             );
         }
-        else if (this._edgeAction & WindowEdgeAction.RESIZE) {
+        else if (this._isEdge(WindowEdgeAction.RESIZE)) {
+            // Resize actions
             let tX = this._startWinArea.x;
             let tY = this._startWinArea.y;
             let tW = this._startWinArea.width;
             let tH = this._startWinArea.height;
 
-            if (this._edgeAction & WindowEdgeAction.RESIZE_BOTTOM) {
+            if (this._isEdge(WindowEdgeAction.RESIZE_BOTTOM)) {
                 tH += this._movePos.y;
             }
             else {
                 tY += this._movePos.y;
                 tH -= this._movePos.y;
             }
-            if (this._edgeAction & WindowEdgeAction.RESIZE_RIGHT) {
+            if (this._isEdge(WindowEdgeAction.RESIZE_RIGHT)) {
                 tW += this._movePos.x;
             }
             else {
