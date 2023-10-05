@@ -96,6 +96,12 @@ export default class extends Extension {
 
     // Init 3 or 4 finger count switch mode
     _initFingerCountFlip() {
+        // Don't mess with system gesture handlers
+        if (this._settings.get_boolean("no-count-flip")) {
+            this._swipeMods = [];
+            return;
+        }
+
         // Move 3-4 Finger Gesture
         /*
          * Original Hook Logic From (swap-finger-gestures):
