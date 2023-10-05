@@ -26,6 +26,11 @@ export default class extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const WEBSITE_LINK = "https://amarullz.com/";
         const PAYPAL_LINK = "https://paypal.me/amarullz";
+        const GNU_SOFTWARE = '<span size="small">' +
+            'This program comes with absolutely no warranty.\n' +
+            'See the <a href="https://gnu.org/licenses/old-licenses/gpl-2.0.html">' +
+            'GNU General Public License, version 2 or later</a> for details.' +
+            '</span>';
 
         this._win = window;
         let settings = window._settings = this.getSettings();
@@ -128,10 +133,26 @@ export default class extends ExtensionPreferences {
         this.about.add(donateRow);
 
 
+        // GNU
+        const gnuSoftwareGroup = new Adw.PreferencesGroup();
+        const gnuSofwareLabel = new Gtk.Label({
+            label: GNU_SOFTWARE,
+            use_markup: true,
+            justify: Gtk.Justification.CENTER,
+        });
+        const gnuSofwareLabelBox = new Gtk.Box({
+            orientation: Gtk.Orientation.VERTICAL,
+            valign: Gtk.Align.END,
+            vexpand: true,
+        });
+        gnuSofwareLabelBox.append(gnuSofwareLabel);
+        gnuSoftwareGroup.add(gnuSofwareLabelBox);
+
         const page = new Adw.PreferencesPage();
         page.add(this.gestures);
         page.add(this.tweaks);
         page.add(this.about);
+        page.add(gnuSoftwareGroup);
         window.add(page);
     }
 

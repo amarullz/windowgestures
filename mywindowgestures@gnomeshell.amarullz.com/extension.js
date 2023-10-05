@@ -21,7 +21,7 @@ import Meta from 'gi://Meta';
 // import GLib from 'gi://GLib';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
-
+import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 // Window edge action
 const WindowEdgeAction = {
@@ -49,10 +49,13 @@ const WindowEdgeAction = {
 
 };
 
-export default class Extension {
+export default class extends Extension {
 
     // Enable Extension
     enable() {
+        // Get settings
+        this._settings = this.getSettings();
+
         // Create virtual devices
         const seat = Clutter.get_default_backend().get_default_seat();
         this._virtualTouchpad = seat.create_virtual_device(
@@ -151,31 +154,33 @@ export default class Extension {
 
     // Get padding edge size
     _edgeSize() {
-        return 32;
+        return this._settings.get_int('edge-size');
     }
 
     // Get top padding edge size
     _topEdgeSize() {
-        return 64;
+        return this._settings.get_int('top-edge-size');
     }
 
     // Get gesture threshold
     _gestureThreshold() {
-        return 32;
+        return this._settings.get_int('gesture-threshold');
     }
 
     _getAcceleration() {
-        return 1.2;
+        return (this._settings.get_int('gesture-acceleration') * 0.1);
     }
 
     // Get gesture threshold
     _gestureCancelThreshold() {
-        return 5;
+        return this._settings.get_int('gesture-cancel-threshold');
     }
 
     // Is 3 Finger
     _gestureNumFinger() {
-        return 4;
+        if (this._settings.get_boolean("no-count-flip"))
+            return 4;
+        return this._settings.get_boolean("three-finger") ? 3 : 4;
     }
 
     // Check edge flags
