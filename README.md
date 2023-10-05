@@ -11,6 +11,9 @@ Support only for GNOME 45.
  * Resize window when cursor on edge of window
  * Move window workspace with swipe left/right gesture
 
+## Demo
+ [![Gnome Extension - My Window Gestures](https://img.youtube.com/vi/yMUYB3OFpBQ/0.jpg)](https://www.youtube.com/watch?v=yMUYB3OFpBQ)
+
 ## License
 
 My Window Gestures are distributed under the terms of the GNU General
