@@ -118,7 +118,7 @@ export default class extends ExtensionPreferences {
         // About
         this.about = new Adw.PreferencesGroup({ title: "About" });
         const aboutVersion = new Adw.ActionRow({
-            title: 'My Window Gestures Version',
+            title: 'Window Gestures Version',
         });
         aboutVersion.add_suffix(new Gtk.Label({
             label: this.metadata.version.toString(),

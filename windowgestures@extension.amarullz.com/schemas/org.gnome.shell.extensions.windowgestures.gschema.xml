@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <schemalist>
-    <schema id="org.gnome.shell.extensions.mywindowgestures"
-        path="/org/gnome/shell/extensions/mywindowgestures/">
+    <schema id="org.gnome.shell.extensions.windowgestures"
+        path="/org/gnome/shell/extensions/windowgestures/">
 
         <key name="no-count-flip" type="b">
             <default>false</default>
