@@ -1,15 +1,29 @@
-# My Window Gestures
+# Window Gestures
 
-My Window Gestures is GNOME Shell extension for managing window with touchpad gestures.
+Window Gestures is GNOME Shell extension for managing window with touchpad gestures.
 Support only for GNOME 45.
 
 ## Features
+ * Maximize window
+ * Snap window to left/right
+ * Move window to left/right workspaces
+ * Move & resize window
+ * Customizable edges & title size area
+ * Customizable number of fingers for gesture (3 or 4 fingers)
+ * Customizable gesture activate & cancel threshold
+ * Customizable gesture acceleration
 
- * Four / Three finger mode
- * Maximize & fullscreen with up gesture
- * Restore & move with down gesture
- * Resize window when cursor on edge of window
- * Move window workspace with swipe left/right gesture
+## Usage
+ * **Pointer on center of window** / **Window is Maximized**
+    * **Swipe Down** to move window
+    * **Swipe Up** to maximize window
+    * **Swipe Up then Left/Right** to snap window into left/right screen
+    * **Swipe Left/Right** to move into left/right workspace
+ * **Pointer on top of window** to move window
+ * **Pointer on top left/right of window** to resize vertically + horizontally
+ * **Pointer on center left/right of window** to resize horizontally
+ * **Pointer on bottom left/right of window**  to resize vertically + horizontally
+ * **Pointer on bottom center of window** to resize vertically
 
 ## Demo
  [![Gnome Extension - My Window Gestures](https://img.youtube.com/vi/yMUYB3OFpBQ/0.jpg)](https://www.youtube.com/watch?v=yMUYB3OFpBQ)
