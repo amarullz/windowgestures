@@ -5,6 +5,7 @@ Support only for GNOME 45.
 
 ## Features
  * Maximize window
+ * Make window fullscreen
  * Snap window to left/right
  * Move window to left/right workspaces
  * Move & resize window
@@ -17,6 +18,7 @@ Support only for GNOME 45.
  * **Pointer on center of window** / **Window is Maximized**
     * **Swipe Down** to move window
     * **Swipe Up** to maximize window
+    * **Swipe Up** to make a window fullscreen / exit fullscreen
     * **Swipe Up then Left/Right** to snap window into left/right screen
     * **Swipe Left/Right** to move into left/right workspace
  * **Pointer on top of window** to move window
@@ -31,6 +33,6 @@ Support only for GNOME 45.
 ## License
 
 My Window Gestures are distributed under the terms of the GNU General
-Public License, version 2 or later. See the [COPYING file][license] for details.
+Public License, version 2 or later. See the [license](COPYING) for details.
 Individual extensions may be licensed under different terms, see each source
 file for details.
