@@ -49,12 +49,11 @@ const WindowEdgeAction = {
 };
 
 // Manager Class
-class Manager extends Extension {
-
+class Manager {
     // Init Extension
-    constructor() {
+    constructor(ext) {
         // Get settings
-        this._settings = this.getSettings();
+        this._settings = ext.getSettings();
 
         // Create virtual devices
         const seat = Clutter.get_default_backend().get_default_seat();
@@ -860,10 +859,10 @@ class Manager extends Extension {
 }
 
 // Export Extension
-export default class WindowGesturesExtension {
+export default class WindowGesturesExtension extends Extension {
     // Enable Extension
     enable() {
-        this.manager = new Manager();
+        this.manager = new Manager(this);
     }
 
     // Disable Extension
