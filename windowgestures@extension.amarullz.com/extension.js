@@ -18,7 +18,6 @@
 
 import Clutter from 'gi://Clutter';
 import Meta from 'gi://Meta';
-// import GLib from 'gi://GLib';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -49,10 +48,11 @@ const WindowEdgeAction = {
 
 };
 
-export default class extends Extension {
+// Manager Class
+class Manager extends Extension {
 
-    // Enable Extension
-    enable() {
+    // Init Extension
+    constructor() {
         // Get settings
         this._settings = this.getSettings();
 
@@ -78,8 +78,8 @@ export default class extends Extension {
         this._initFingerCountFlip();
     }
 
-    // Disable Extension
-    disable() {
+    // Cleanup Extension
+    destroy() {
         // restore default GNOME 3 fingers gesture
         this._restoreFingerCountFlip();
 
@@ -92,6 +92,7 @@ export default class extends Extension {
 
         // Cleanup all variables
         this._clearVars();
+        this._settings = null;
     }
 
     // Init 3 or 4 finger count switch mode
@@ -856,4 +857,18 @@ export default class extends Extension {
         return Clutter.EVENT_STOP;
     }
 
+}
+
+// Export Extension
+export default class WindowGesturesExtension {
+    // Enable Extension
+    enable() {
+        this.manager = new Manager();
+    }
+
+    // Disable Extension
+    disable() {
+        this.manager.destroy();
+        this.manager = null;
+    }
 }
