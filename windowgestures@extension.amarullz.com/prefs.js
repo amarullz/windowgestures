@@ -52,6 +52,13 @@ export default class extends ExtensionPreferences {
         this.gestures.add(this.gestures_3fingers);
         settings.bind("three-finger", this.gestures_3fingers, 'active', Gio.SettingsBindFlags.DEFAULT);
 
+        this.gestures_hswitch = new Adw.SwitchRow({
+            title: "Horizontal Swipe Always Switch Windows",
+            subtitle: "If true, Horizontal swipe will always switching windows just like swiping outside window area"
+        });
+        this.gestures.add(this.gestures_hswitch);
+        settings.bind("horiz-swap-switch", this.gestures_hswitch, 'active', Gio.SettingsBindFlags.DEFAULT);
+
 
         // Size Settings
         this.tweaks = new Adw.PreferencesGroup({ title: "Tweaks" });

@@ -37,6 +37,9 @@ const WindowEdgeAction = {
     GESTURE_UP_LEFT: 0x100, // Gesture Up Left
     GESTURE_UP_RIGHT: 0x200,// Gesture Up Right
 
+    GESTURE_HORIZONTAL: 0x400, // Non-Window Gestures
+    GESTURE_VERTICAL: 0x800,
+
     RESIZE_LEFT: 0x1000,
     RESIZE_RIGHT: 0x2000,
     RESIZE_TOP: 0x4000,
@@ -113,8 +116,8 @@ class Manager {
             Main.wm._workspaceAnimation._swipeTracker._touchpadGesture,
             Main.overview._overview._controls
                 ._workspacesDisplay._swipeTracker._touchpadGesture,
-            // Main.overview._overview._controls
-            //     ._appDisplay._swipeTracker._touchpadGesture
+            Main.overview._overview._controls
+                ._appDisplay._swipeTracker._touchpadGesture
         ];
         let me = this;
         this._swipeMods.forEach((g) => {
@@ -173,6 +176,7 @@ class Manager {
         return this._settings.get_int('gesture-threshold');
     }
 
+    // Get acceleration
     _getAcceleration() {
         return (this._settings.get_int('gesture-acceleration') * 0.1);
     }
@@ -180,6 +184,13 @@ class Manager {
     // Get gesture threshold
     _gestureCancelThreshold() {
         return this._settings.get_int('gesture-cancel-threshold');
+    }
+
+    // Get horizontal swipe mode
+    _getHorizontalSwipeMode() {
+        // horiz-swap-switch
+        // false. Change workspace, true. Switch Window
+        return this._settings.get_boolean("horiz-swap-switch");
     }
 
     // Is 3 Finger
@@ -302,10 +313,31 @@ class Manager {
         );
     }
 
+    // Activate Target Window
+    _activateWindow() {
+        if (this._targetWindow == null) {
+            return;
+        }
+
+        // Activate window if not focused yet
+        if (!this._targetWindow.has_focus()) {
+            this._targetWindow.activate(
+                global.get_current_time()
+            );
+        }
+    }
+
     // On touch gesture started
     _touchStarted() {
         // Get current mouse position
         let [pointerX, pointerY, pointerZ] = global.get_pointer();
+
+        // Save start position
+        this._startPos.x = pointerX;
+        this._startPos.y = pointerY;
+
+        // Reset move position
+        this._movePos.x = this._movePos.y = 0;
 
         // Get actor in current mouse position
         let currActor = global.stage.get_actor_at_pos(
@@ -332,20 +364,6 @@ class Manager {
         // Set opener window as target if it was dialog
         if (this._targetWindow.is_attached_dialog()) {
             this._targetWindow = this._targetWindow.get_transient_for();
-        }
-
-        // Save start position
-        this._startPos.x = pointerX;
-        this._startPos.y = pointerY;
-
-        // Reset move position
-        this._movePos.x = this._movePos.y = 0;
-
-        // Activate window if not focused yet
-        if (!this._targetWindow.has_focus()) {
-            this._targetWindow.activate(
-                global.get_current_time()
-            );
         }
 
         // Get monitor area
@@ -432,11 +450,97 @@ class Manager {
         return Clutter.EVENT_STOP;
     }
 
+    // On touch gesture updated no targetWindow
+    _touchUpdateNoWindow() {
+        let threshold = this._gestureThreshold();
+        let absX = Math.abs(this._movePos.x);
+        let absY = Math.abs(this._movePos.y);
+
+        // Gesture still undefined
+        if (this._edgeAction == WindowEdgeAction.NONE) {
+            // Move Value
+            if (absX >= threshold || absY >= threshold) {
+                let gestureValue = 0;
+                let isVertical = false;
+                if (absX > absY) {
+                    // Horizontal Swipe
+                    if (this._movePos.x < 0 - threshold) {
+                        gestureValue = -1;
+                        this._edgeAction = WindowEdgeAction.WAIT_GESTURE |
+                            WindowEdgeAction.GESTURE_HORIZONTAL;
+
+                    }
+                    else if (this._movePos.x > threshold) {
+                        gestureValue = 1;
+                        this._edgeAction = WindowEdgeAction.WAIT_GESTURE |
+                            WindowEdgeAction.GESTURE_HORIZONTAL;
+                    }
+                }
+                else {
+                    // Vertical Swipe
+                    if (this._movePos.y < 0 - threshold) {
+                        gestureValue = -1;
+                        this._edgeAction = WindowEdgeAction.WAIT_GESTURE |
+                            WindowEdgeAction.GESTURE_VERTICAL;
+                        isVertical = true;
+                    }
+                    else if (this._movePos.y > threshold) {
+                        gestureValue = 1;
+                        this._edgeAction = WindowEdgeAction.WAIT_GESTURE |
+                            WindowEdgeAction.GESTURE_VERTICAL;
+                        isVertical = true;
+                    }
+                }
+                if (gestureValue != 0) {
+                    // Reset Move Position
+                    this._movePos.x = 0;
+                    this._movePos.y = 0;
+
+                    // isVertical
+                    let focusWindow = global.display.get_focus_window();
+                    if (focusWindow) {
+                        let listWin = [];
+                        if (isVertical) {
+                            // All Windows
+                            listWin = global.display.list_all_windows();
+                        }
+                        else {
+                            // Windows in workspace only
+                            listWin = focusWindow
+                                .get_workspace().list_windows();
+                        }
+                        let indexAct = listWin.indexOf(focusWindow);
+                        if (indexAct > -1) {
+                            let nextWin = indexAct + gestureValue;
+                            if (nextWin < 0) {
+                                nextWin = listWin.length - 1;
+                            }
+                            else if (nextWin >= listWin.length) {
+                                nextWin = 0;
+                            }
+                            listWin[nextWin].activate(
+                                global.get_current_time()
+                            );
+                        }
+                    }
+                }
+            }
+        }
+        return Clutter.EVENT_STOP;
+    }
+
     // On touch gesture updated
     _touchUpdate(dx, dy) {
+        // Set event time
+        const currentTime = global.get_current_time();
+
+        // Moving coordinat
+        this._movePos.x += dx;
+        this._movePos.y += dy;
+
         // Ignore if no target window
         if (this._targetWindow == null) {
-            return Clutter.EVENT_PROPAGATE;
+            return this._touchUpdateNoWindow();
         }
 
         // Ignore if no edge action (will not happened btw)
@@ -445,21 +549,10 @@ class Manager {
             return Clutter.EVENT_PROPAGATE;
         }
 
-        // Set event time
-        const currentTime = global.get_current_time();
-
-        // Moving coordinat
-        this._movePos.x += dx;
-        this._movePos.y += dy;
-
-        // Window area as local value
-        let wLeft = this._startWinArea.x;
-        let wTop = this._startWinArea.y;
-        // let wRight = wLeft + this._startWinArea.width;
-        // let wBottom = wTop + this._startWinArea.height;
-
-
+        // Check edge flags
         if (this._isEdge(WindowEdgeAction.MOVE)) {
+            this._activateWindow();
+
             // Move cursor pointer
             this._virtualTouchpad.notify_relative_motion(
                 currentTime, dx, dy
@@ -520,6 +613,8 @@ class Manager {
             );
         }
         else if (this._isEdge(WindowEdgeAction.RESIZE)) {
+            this._activateWindow();
+
             // Move cursor pointer
             this._virtualTouchpad.notify_relative_motion(
                 currentTime,
@@ -592,14 +687,29 @@ class Manager {
                 if (absX >= threshold || absY >= threshold) {
                     if (absX > absY) {
                         if (this._movePos.x < 0 - threshold) {
-                            this._edgeAction |= WindowEdgeAction.GESTURE_LEFT;
-                            this._edgeGestured = true;
+                            if (!this._getHorizontalSwipeMode()) {
+                                this._edgeAction |=
+                                    WindowEdgeAction.GESTURE_LEFT;
+                                this._edgeGestured = true;
+                            }
+                            else {
+                                this._edgeAction = WindowEdgeAction.NONE;
+                                this._targetWindow = null;
+                                return this._touchUpdateNoWindow();
+                            }
                         }
                         else if (this._movePos.x > threshold) {
-                            if (this._workspaceHavePrev()) {
-                                this._edgeAction |=
-                                    WindowEdgeAction.GESTURE_RIGHT;
-                                this._edgeGestured = true;
+                            if (!this._getHorizontalSwipeMode()) {
+                                if (this._workspaceHavePrev()) {
+                                    this._edgeAction |=
+                                        WindowEdgeAction.GESTURE_RIGHT;
+                                    this._edgeGestured = true;
+                                }
+                            }
+                            else {
+                                this._edgeAction = WindowEdgeAction.NONE;
+                                this._targetWindow = null;
+                                return this._touchUpdateNoWindow();
                             }
                         }
                     }
@@ -692,6 +802,7 @@ class Manager {
             }
 
             if (this._edgeGestured) {
+                this._activateWindow();
                 if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
                     if (this._isEdge(WindowEdgeAction.GESTURE_UP_LEFT)) {
                         this._showPreview(

@@ -13,6 +13,7 @@ Support only for GNOME 45.
  * Customizable number of fingers for gesture (3 or 4 fingers)
  * Customizable gesture activate & cancel threshold
  * Customizable gesture acceleration
+ * Customizable horizontal swipe for switch windows or workspace
 
 ## Usage
  * **Pointer on center of window** / **Window is Maximized**
@@ -26,6 +27,9 @@ Support only for GNOME 45.
  * **Pointer on center left/right of window** to resize horizontally
  * **Pointer on bottom left/right of window**  to resize vertically + horizontally
  * **Pointer on bottom center of window** to resize vertically
+ * **Pointer outside window** will switch between windows
+    * **Swipe Horizontally** switch between windows in same workspace
+    * **Swipe Vertically** switch between all windows
 
 ## Demo
  [![Improve Touchpad GNOME Experience with Window Gesture](https://img.youtube.com/vi/HHDjraAE6sc/0.jpg)](https://www.youtube.com/watch?v=HHDjraAE6sc)

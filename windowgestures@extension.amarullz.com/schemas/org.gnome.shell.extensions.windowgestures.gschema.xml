@@ -19,6 +19,14 @@
             </description>
         </key>
 
+        <key name="horiz-swap-switch" type="b">
+            <default>false</default>
+            <summary>Horizontal Swipe Always Switch Windows</summary>
+            <description>
+                If true, Horizontal swipe will always switching windows
+            </description>
+        </key>
+
         <key type="i" name="edge-size">
             <default>32</default>
             <summary>Edge Size for Resize</summary>
