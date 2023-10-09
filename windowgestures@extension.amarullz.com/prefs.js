@@ -32,38 +32,37 @@ export default class extends ExtensionPreferences {
             'GNU General Public License, version 2 or later</a> for details.' +
             '</span>';
 
-        this._win = window;
-        let settings = window._settings = this.getSettings();
+        let settings = this.getSettings();
 
         // Gesture Settings
-        this.gestures = new Adw.PreferencesGroup({ title: "Gestures" });
+        let gestures = new Adw.PreferencesGroup({ title: "Gestures" });
 
-        this.gestures_noflip = new Adw.SwitchRow({
+        let gestures_noflip = new Adw.SwitchRow({
             title: "Keep System Gesture",
             subtitle: "If true, extension will not hook system gesture events but Use 3 Fingers config cannot be used. Need re-enable extension to take effect"
         });
-        this.gestures.add(this.gestures_noflip);
-        settings.bind("no-count-flip", this.gestures_noflip, 'active', Gio.SettingsBindFlags.DEFAULT);
+        gestures.add(gestures_noflip);
+        settings.bind("no-count-flip", gestures_noflip, 'active', Gio.SettingsBindFlags.DEFAULT);
 
-        this.gestures_3fingers = new Adw.SwitchRow({
+        let gestures_3fingers = new Adw.SwitchRow({
             title: "Use 3 Fingers",
             subtitle: "If true, window gestures will use three fingers, and workspace will use four finger"
         });
-        this.gestures.add(this.gestures_3fingers);
-        settings.bind("three-finger", this.gestures_3fingers, 'active', Gio.SettingsBindFlags.DEFAULT);
+        gestures.add(gestures_3fingers);
+        settings.bind("three-finger", gestures_3fingers, 'active', Gio.SettingsBindFlags.DEFAULT);
 
-        this.gestures_hswitch = new Adw.SwitchRow({
+        let gestures_hswitch = new Adw.SwitchRow({
             title: "Horizontal Swipe Always Switch Windows",
             subtitle: "If true, Horizontal swipe will always switching windows just like swiping outside window area"
         });
-        this.gestures.add(this.gestures_hswitch);
-        settings.bind("horiz-swap-switch", this.gestures_hswitch, 'active', Gio.SettingsBindFlags.DEFAULT);
+        gestures.add(gestures_hswitch);
+        settings.bind("horiz-swap-switch", gestures_hswitch, 'active', Gio.SettingsBindFlags.DEFAULT);
 
 
         // Size Settings
-        this.tweaks = new Adw.PreferencesGroup({ title: "Tweaks" });
+        let tweaks = new Adw.PreferencesGroup({ title: "Tweaks" });
 
-        this.field_edge_size = new Adw.SpinRow({
+        let field_edge_size = new Adw.SpinRow({
             title: "Edge Size for Resize",
             subtitle: "Number of pixel from window egdes to determine resize action",
             adjustment: new Gtk.Adjustment({
@@ -72,11 +71,11 @@ export default class extends ExtensionPreferences {
                 step_increment: 4
             })
         });
-        this.tweaks.add(this.field_edge_size);
-        settings.bind("edge-size", this.field_edge_size, 'value', Gio.SettingsBindFlags.DEFAULT);
+        tweaks.add(field_edge_size);
+        settings.bind("edge-size", field_edge_size, 'value', Gio.SettingsBindFlags.DEFAULT);
 
 
-        this.field_topedge_size = new Adw.SpinRow({
+        let field_topedge_size = new Adw.SpinRow({
             title: "Title Edge size",
             subtitle: "Number of pixel from top of window to determine move action",
             adjustment: new Gtk.Adjustment({
@@ -85,11 +84,11 @@ export default class extends ExtensionPreferences {
                 step_increment: 4
             })
         });
-        this.tweaks.add(this.field_topedge_size);
-        settings.bind("top-edge-size", this.field_topedge_size, 'value', Gio.SettingsBindFlags.DEFAULT);
+        tweaks.add(field_topedge_size);
+        settings.bind("top-edge-size", field_topedge_size, 'value', Gio.SettingsBindFlags.DEFAULT);
 
 
-        this.field_threshold = new Adw.SpinRow({
+        let field_threshold = new Adw.SpinRow({
             title: "Gesture Threshold",
             adjustment: new Gtk.Adjustment({
                 lower: 16,
@@ -97,10 +96,10 @@ export default class extends ExtensionPreferences {
                 step_increment: 4
             })
         });
-        this.tweaks.add(this.field_threshold);
-        settings.bind("gesture-threshold", this.field_threshold, 'value', Gio.SettingsBindFlags.DEFAULT);
+        tweaks.add(field_threshold);
+        settings.bind("gesture-threshold", field_threshold, 'value', Gio.SettingsBindFlags.DEFAULT);
 
-        this.field_cancel_threshold = new Adw.SpinRow({
+        let field_cancel_threshold = new Adw.SpinRow({
             title: "Gesture Cancel Threshold",
             adjustment: new Gtk.Adjustment({
                 lower: 4,
@@ -108,10 +107,10 @@ export default class extends ExtensionPreferences {
                 step_increment: 1
             })
         });
-        this.tweaks.add(this.field_cancel_threshold);
-        settings.bind("gesture-cancel-threshold", this.field_cancel_threshold, 'value', Gio.SettingsBindFlags.DEFAULT);
+        tweaks.add(field_cancel_threshold);
+        settings.bind("gesture-cancel-threshold", field_cancel_threshold, 'value', Gio.SettingsBindFlags.DEFAULT);
 
-        this.field_accel = new Adw.SpinRow({
+        let field_accel = new Adw.SpinRow({
             title: "Gesture Acceleration",
             adjustment: new Gtk.Adjustment({
                 lower: 10,
@@ -119,26 +118,25 @@ export default class extends ExtensionPreferences {
                 step_increment: 1
             })
         });
-        this.tweaks.add(this.field_accel);
-        settings.bind("gesture-acceleration", this.field_accel, 'value', Gio.SettingsBindFlags.DEFAULT);
+        tweaks.add(field_accel);
+        settings.bind("gesture-acceleration", field_accel, 'value', Gio.SettingsBindFlags.DEFAULT);
 
         // About
-        this.about = new Adw.PreferencesGroup({ title: "About" });
-        const aboutVersion = new Adw.ActionRow({
+        let about = new Adw.PreferencesGroup({ title: "About" });
+        let aboutVersion = new Adw.ActionRow({
             title: 'Window Gestures Version',
         });
         aboutVersion.add_suffix(new Gtk.Label({
             label: this.metadata.version.toString(),
             css_classes: ['dim-label'],
         }));
-        this.about.add(aboutVersion);
-        const githubRow = this._createLinkRow('Source Github', this.metadata.url);
-        this.about.add(githubRow);
-        const websiteRow = this._createLinkRow('Visit Website', WEBSITE_LINK);
-        this.about.add(websiteRow);
-        const donateRow = this._createLinkRow('Donate via PayPal', PAYPAL_LINK);
-        this.about.add(donateRow);
-
+        about.add(aboutVersion);
+        let githubRow = this._createLinkRow(window, 'Source Github', this.metadata.url);
+        about.add(githubRow);
+        let websiteRow = this._createLinkRow(window, 'Visit Website', WEBSITE_LINK);
+        about.add(websiteRow);
+        let donateRow = this._createLinkRow(window, 'Donate via PayPal', PAYPAL_LINK);
+        about.add(donateRow);
 
         // GNU
         const gnuSoftwareGroup = new Adw.PreferencesGroup();
@@ -156,14 +154,14 @@ export default class extends ExtensionPreferences {
         gnuSoftwareGroup.add(gnuSofwareLabelBox);
 
         const page = new Adw.PreferencesPage();
-        page.add(this.gestures);
-        page.add(this.tweaks);
-        page.add(this.about);
+        page.add(gestures);
+        page.add(tweaks);
+        page.add(about);
         page.add(gnuSoftwareGroup);
         window.add(page);
     }
 
-    _createLinkRow(title_row, uri) {
+    _createLinkRow(window, title_row, uri) {
         const image = new Gtk.Image({
             icon_name: 'adw-external-link-symbolic',
             valign: Gtk.Align.CENTER,
@@ -173,7 +171,7 @@ export default class extends ExtensionPreferences {
             activatable: true,
         });
         linkRow.connect('activated', () => {
-            Gtk.show_uri(this._win, uri, Gdk.CURRENT_TIME);
+            Gtk.show_uri(window, uri, Gdk.CURRENT_TIME);
         });
         linkRow.add_suffix(image);
         return linkRow;
