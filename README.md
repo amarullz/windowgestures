@@ -28,6 +28,8 @@ Support only for GNOME 45.
  * **Pointer on bottom center of window** to resize vertically
 
 ## Demo
+ [![Improve Touchpad GNOME Experience with Window Gesture](https://img.youtube.com/vi/HHDjraAE6sc/0.jpg)](https://www.youtube.com/watch?v=HHDjraAE6sc)
+
  [![Gnome Extension - My Window Gestures](https://img.youtube.com/vi/yMUYB3OFpBQ/0.jpg)](https://www.youtube.com/watch?v=yMUYB3OFpBQ)
 
 ## License
