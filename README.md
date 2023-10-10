@@ -3,6 +3,9 @@
 Window Gestures is GNOME Shell extension for managing window with touchpad gestures.
 Support only for GNOME 45.
 
+## Installation
+[![Get from GNOME Extension](./gext.svg)](https://extensions.gnome.org/extension/6343/window-gestures/)
+
 ## Features
  * Maximize window
  * Make window fullscreen
