@@ -78,6 +78,25 @@ export default class extends ExtensionPreferences {
             "Enable snapping window when moving"
         );
 
+        // Pinch Settings
+        const pinch_actions = [
+            "Disable",
+            "Minimize Window",
+            "Close Window",
+            "Show Desktop",
+            "Overview (Super)",
+            "App (Super+A)"
+        ];
+        const pinch = new Adw.PreferencesGroup({ title: "Pinch" });
+        this._createCombo(pinch, "pinch3-in",
+            "Pinch-In 3 Fingers", "", pinch_actions);
+        this._createCombo(pinch, "pinch3-out",
+            "Pinch-Out 3 Fingers", "", pinch_actions);
+        this._createCombo(pinch, "pinch4-in",
+            "Pinch-In 4 Fingers", "", pinch_actions);
+        this._createCombo(pinch, "pinch4-out",
+            "Pinch-Out 4 Fingers", "", pinch_actions);
+
         // Tweaks Settings
         const tweaks = new Adw.PreferencesGroup({ title: "Tweaks" });
         this._createSpin(tweaks, "edge-size",
@@ -141,6 +160,7 @@ export default class extends ExtensionPreferences {
         const page = new Adw.PreferencesPage();
         page.add(gestures);
         page.add(fn);
+        page.add(pinch);
         page.add(tweaks);
         page.add(about);
         page.add(gnuSoftwareGroup);
@@ -172,6 +192,24 @@ export default class extends ExtensionPreferences {
         parent.add(el);
         this.getSettings().bind(
             bind, el, 'value', Gio.SettingsBindFlags.DEFAULT);
+    }
+
+    /* Create Combo Row */
+    _createCombo(parent, bind, title, subtitle, items) {
+        const itemStr = new Gtk.StringList();
+        for (var i = 0; i < items.length; i++) {
+            itemStr.append(items[i]);
+        }
+        const comboRow = new Adw.ComboRow({
+            title: title,
+            subtitle: subtitle,
+            model: itemStr,
+            selected: this.getSettings().get_int(bind),
+        });
+        comboRow.connect('notify::selected', widget => {
+            this.getSettings().set_int(bind, widget.selected);
+        });
+        parent.add(comboRow);
     }
 
     /* Create Link */
