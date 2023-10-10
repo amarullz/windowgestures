@@ -27,6 +27,49 @@
             </description>
         </key>
 
+        <key name="use-active-window" type="b">
+            <default>false</default>
+            <summary>Handle Active Window</summary>
+            <description>
+                If true, gesture will control active window rather than window on current pointer. This will disable resize function
+            </description>
+        </key>
+
+        <key name="fn-resize" type="b">
+            <default>true</default>
+            <summary>Enable Resize</summary>
+            <description>
+                Enable resize window if cursor on resize edges
+            </description>
+        </key>
+
+        <key name="fn-move" type="b">
+            <default>true</default>
+            <summary>Enable Move</summary>
+            <description>
+                Enable move function
+            </description>
+        </key>
+
+        <key name="fn-maximized-snap" type="b">
+            <default>true</default>
+            <summary>Enable Maximized Snap</summary>
+            <description>
+                Enable swipe up then left/right gesture to maximized to side
+            </description>
+        </key>
+
+        <key name="fn-move-snap" type="b">
+            <default>true</default>
+            <summary>Enable Move Snap</summary>
+            <description>
+                Enable snapping window when moving.
+            </description>
+        </key>
+
+        
+
+
         <key type="i" name="edge-size">
             <default>32</default>
             <summary>Edge Size for Resize</summary>
