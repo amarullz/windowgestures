@@ -1040,41 +1040,52 @@ class Manager {
             // ALT+TAB
             this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_Tab]);
         }
-        else if (id == 5) {
-            // SUPER+TAB
-            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_Tab]);
-            let activeWin = global.display.get_focus_window();
-            if (activeWin) {
-                activeWin.activate(
-                    global.get_current_time()
-                );
+        else if ((id == 5) || (id == 6)) {
+            // Next/Prev Window
+            let gestureValue = (id == 5) ? 1 : -1;
+            let focusWindow = global.display.get_focus_window();
+            if (focusWindow) {
+                let listWin = global.display.list_all_windows();
+                let indexAct = listWin.indexOf(focusWindow);
+                if (indexAct > -1) {
+                    let nextWin = indexAct + gestureValue;
+                    if (nextWin < 0) {
+                        nextWin = listWin.length - 1;
+                    }
+                    else if (nextWin >= listWin.length) {
+                        nextWin = 0;
+                    }
+                    listWin[nextWin].activate(
+                        global.get_current_time()
+                    );
+                }
             }
         }
-        else if (id == 6) {
+        else if (id == 7) {
             // Overview (Super)
             this._sendKeyPress([Clutter.KEY_Super_L]);
         }
-        else if (id == 7) {
+        else if (id == 8) {
             // Show Apps (Super+A)
             this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_A + _LCASE]);
         }
-        else if (id == 8) {
+        else if (id == 9) {
             // Quick Settings (Super+S)
             this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_S + _LCASE]);
         }
-        else if (id == 9) {
+        else if (id == 10) {
             // Notification (Super+V)
             this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_V + _LCASE]);
         }
-        else if (id == 10) {
+        else if (id == 11) {
             // Run (Alt+F2)
             this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F2]);
         }
-        else if (id == 11) {
+        else if (id == 12) {
             // Move Window (Alt+F7)
             this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F7]);
         }
-        else if (id == 12) {
+        else if (id == 13) {
             // Resize (Alt+F8)
             this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F8]);
         }
