@@ -18,6 +18,7 @@
 
 import Clutter from 'gi://Clutter';
 import Meta from 'gi://Meta';
+import GLib from 'gi://GLib';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -338,8 +339,11 @@ class Manager {
         this._pinch = {
             begin: false,
             canceled: false,
+            isrepeat: false,
             fingers: 0,
-            action: 0
+            action: 0,
+            interval: 0,
+            interval_wait: 0
         };
 
         // Clear window tile preview
@@ -371,6 +375,17 @@ class Manager {
                 global.get_current_time()
             );
         }
+    }
+
+    setInterval(func, delay, ...args) {
+        return GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
+            func(...args);
+            return GLib.SOURCE_CONTINUE;
+        });
+    }
+
+    clearInterval(id) {
+        GLib.source_remove(id);
     }
 
     // On touch gesture started
@@ -1089,6 +1104,45 @@ class Manager {
             // Resize (Alt+F8)
             this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F8]);
         }
+        else if (id >= 14 && id <= 18) {
+            let aid = id - 14;
+            const audiokeys = [
+                Clutter.KEY_AudioRaiseVolume,
+                Clutter.KEY_AudioLowerVolume,
+                Clutter.KEY_AudioMute,
+                Clutter.KEY_MonBrightnessUp,
+                Clutter.KEY_MonBrightnessDown,
+            ];
+            // Resize (Alt+F8)
+            this._sendKeyPress([audiokeys[aid]]);
+        }
+    }
+
+    _isRepeatAction(id) {
+        switch (id) {
+            case 14:
+            case 15:
+            case 17:
+            case 18:
+                return true;
+        }
+        return false;
+    }
+
+    // Get Current Action Id
+    _pinchGetCurrentActionId() {
+        if (!this._pinch.canceled && this._pinch.begin &&
+            this._pinch.action != 0 && this._pinch.fingers >= 3 &&
+            this._pinch.fingers <= 4) {
+            try {
+                let cfg_name = "pinch" + this._pinch.fingers + "-" +
+                    ((this._pinch.action == 1) ? "in" : "out");
+                let action_id = this._settings.get_int(cfg_name);
+                return action_id;
+            } catch (err) {
+            }
+        }
+        return 0;
     }
 
     // Update Pinch
@@ -1112,32 +1166,39 @@ class Manager {
                 // Pinch-Out
                 this._pinch.canceled = (pinch_scale >= pOut) ? false : true;
             }
+            if (this._pinch.action != 0) {
+                let action_id = this._pinchGetCurrentActionId();
+                // Repeatable Keys
+                if (this._isRepeatAction(action_id)) {
+                    if (this._pinch.interval == 0) {
+                        this._pinch.isrepeat = true;
+                        this._pinchAction(action_id);
+                        let me = this;
+                        this._pinch.interval = this.setInterval(
+                            function () {
+                                if (me._pinch.interval_wait >= 5) {
+                                    me._pinchAction(action_id);
+                                } else {
+                                    me._pinch.interval_wait++;
+                                }
+                            }, 100
+                        );
+                    }
+                }
+            }
         }
         return Clutter.EVENT_STOP;
     }
 
     // End Pinch
     _pinchEnd() {
-        if (!this._pinch.canceled && this._pinch.begin &&
-            this._pinch.action != 0 && this._pinch.fingers >= 3 &&
-            this._pinch.fingers <= 4) {
-            try {
-                let cfg_name = "pinch" + this._pinch.fingers + "-" +
-                    ((this._pinch.action == 1) ? "in" : "out");
-                let action_id = this._settings.get_int(cfg_name);
+        this.clearInterval(this._pinch.interval);
+        this._pinch.interval = 0;
 
-                log(
-                    "WGS - pinchEnd: " + cfg_name + " / actionid: " +
-                    action_id
-                );
-
-                if (action_id > 0) {
-                    // Execute action
-                    this._pinchAction(action_id);
-                }
-            } catch (err) {
-                log("Error Action = " + err);
-            }
+        let action_id = this._pinchGetCurrentActionId();
+        if (action_id > 0 && !this._pinch.isrepeat) {
+            // Execute action
+            this._pinchAction(action_id);
         }
         this._clearVars();
         return Clutter.EVENT_STOP;

@@ -93,7 +93,12 @@ export default class extends ExtensionPreferences {
             "Notification",
             "Run (Alt+F2)",
             "Move (Alt+F7)",
-            "Resize (Alt+F8)"
+            "Resize (Alt+F8)",
+            "Volume Up",
+            "Volume Down",
+            "Mute",
+            "Brightness Up",
+            "Brightness Down"
         ];
         const pinch = new Adw.PreferencesGroup({ title: "Pinch" });
         this._createSwitch(
