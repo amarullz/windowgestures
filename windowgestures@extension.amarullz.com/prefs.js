@@ -84,6 +84,8 @@ export default class extends ExtensionPreferences {
             "Minimize Window",
             "Close Window",
             "Show Desktop",
+            "Alt+Tab Switch",
+            "Super+Tab Switch",
             "Overview (Super)",
             "App (Super+A)",
             "Quick Settings",

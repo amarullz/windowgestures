@@ -1037,30 +1037,38 @@ class Manager {
             this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_D + _LCASE]);
         }
         else if (id == 4) {
+            // ALT+TAB
+            this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_Tab]);
+        }
+        else if (id == 5) {
+            // SUPER+TAB
+            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_Tab]);
+        }
+        else if (id == 6) {
             // Overview (Super)
             this._sendKeyPress([Clutter.KEY_Super_L]);
         }
-        else if (id == 5) {
+        else if (id == 7) {
             // Show Apps (Super+A)
             this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_A + _LCASE]);
         }
-        else if (id == 6) {
+        else if (id == 8) {
             // Quick Settings (Super+S)
             this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_S + _LCASE]);
         }
-        else if (id == 7) {
+        else if (id == 9) {
             // Notification (Super+V)
             this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_V + _LCASE]);
         }
-        else if (id == 8) {
+        else if (id == 10) {
             // Run (Alt+F2)
             this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F2]);
         }
-        else if (id == 9) {
+        else if (id == 11) {
             // Move Window (Alt+F7)
             this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F7]);
         }
-        else if (id == 10) {
+        else if (id == 12) {
             // Resize (Alt+F8)
             this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F8]);
         }
