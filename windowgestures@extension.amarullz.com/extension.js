@@ -1043,6 +1043,12 @@ class Manager {
         else if (id == 5) {
             // SUPER+TAB
             this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_Tab]);
+            let activeWin = global.display.get_focus_window();
+            if (activeWin) {
+                activeWin.activate(
+                    global.get_current_time()
+                );
+            }
         }
         else if (id == 6) {
             // Overview (Super)
