@@ -188,7 +188,6 @@ class Manager {
 
     // Get horizontal swipe mode
     _getHorizontalSwipeMode() {
-        // horiz-swap-switch
         // false. Change workspace, true. Switch Window
         return this._settings.get_boolean("horiz-swap-switch");
     }
@@ -217,6 +216,18 @@ class Manager {
         return this._settings.get_boolean("fn-move-snap");
     }
 
+    _getPinchInScale() {
+        return this._settings.get_int('pinch-in-scale');
+    }
+
+    _getPinchOutScale() {
+        return this._settings.get_int('pinch-out-scale');
+    }
+
+    _getPinchEnabled() {
+        return this._settings.get_boolean("pinch-enable");
+    }
+
     // Check edge flags
     _isEdge(edge) {
         return ((this._edgeAction & edge) == edge);
@@ -230,7 +241,8 @@ class Manager {
         global.window_manager.emit("show-tile-preview",
             this._targetWindow, new Meta.Rectangle(
                 { x: rx, y: ry, width: rw, height: rh }
-            ), this._monitorId
+            )
+            , this._monitorId
         );
     }
 
@@ -241,13 +253,12 @@ class Manager {
 
     // Simulate keypress (up -> down)
     _sendKeyPress(combination) {
-        const currentTime = global.get_current_time();
         combination.forEach(key => this._virtualKeyboard.notify_keyval(
-            currentTime, key, Clutter.KeyState.PRESSED)
+            Clutter.get_current_event_time(), key, Clutter.KeyState.PRESSED)
         );
         combination.reverse().forEach(key =>
             this._virtualKeyboard.notify_keyval(
-                currentTime, key, Clutter.KeyState.RELEASED
+                Clutter.get_current_event_time(), key, Clutter.KeyState.RELEASED
             ));
     }
 
@@ -322,6 +333,14 @@ class Manager {
         // Edge Action
         this._edgeAction = WindowEdgeAction.NONE;
         this._edgeGestured = false;
+
+        // Pinch
+        this._pinch = {
+            begin: false,
+            canceled: false,
+            fingers: 0,
+            action: 0
+        };
 
         // Clear window tile preview
         this._hidePreview();
@@ -997,8 +1016,136 @@ class Manager {
         return Clutter.EVENT_STOP;
     }
 
+    setTimeout(func, delay, ...args) {
+        return GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
+            func(...args);
+            return GLib.SOURCE_REMOVE;
+        });
+    }
+
+    clearTimeout(id) {
+        GLib.source_remove(id);
+    }
+
+    // Run Action
+    _pinchAction(id) {
+        const _LCASE = 32;
+        if (id == 1) {
+            // Minimize
+            let activeWin = global.display.get_focus_window();
+            if (activeWin) {
+                if (activeWin.can_minimize()) {
+                    activeWin.minimize();
+                }
+            }
+        }
+        else if (id == 2) {
+            // Close Window (ALT+F4)
+            this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F4]);
+        }
+        else if (id == 3) {
+            // Show Desktop (Super+D)  Clutter.KEY_D
+            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_D + _LCASE]);
+        }
+        else if (id == 4) {
+            // Overview (Super)
+            this._sendKeyPress([Clutter.KEY_Super_L]);
+        }
+        else if (id == 5) {
+            // Show Apps (Super+A)
+            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_A + _LCASE]);
+        }
+    }
+
+    // Update Pinch
+    _pinchUpdate(pinch_scale) {
+        if (this._pinch.begin) {
+            let pIn = (this._getPinchInScale() / 100.0);
+            let pOut = (this._getPinchOutScale() / 100.0);
+            if (this._pinch.action == 0) {
+                if (pinch_scale <= pIn) {
+                    this._pinch.action = 1;
+                }
+                else if (pinch_scale >= pOut) {
+                    this._pinch.action = 2;
+                }
+            }
+            else if (this._pinch.action == 1) {
+                // Pinch-In
+                this._pinch.canceled = (pinch_scale <= pIn) ? false : true;
+            }
+            else if (this._pinch.action == 2) {
+                // Pinch-Out
+                this._pinch.canceled = (pinch_scale >= pOut) ? false : true;
+            }
+        }
+        return Clutter.EVENT_STOP;
+    }
+
+    // End Pinch
+    _pinchEnd() {
+        if (!this._pinch.canceled && this._pinch.begin &&
+            this._pinch.action != 0 && this._pinch.fingers >= 3 &&
+            this._pinch.fingers <= 4) {
+            try {
+                let cfg_name = "pinch" + this._pinch.fingers + "-" +
+                    ((this._pinch.action == 1) ? "in" : "out");
+                let action_id = this._settings.get_int(cfg_name);
+
+                log(
+                    "WGS - pinchEnd: " + cfg_name + " / actionid: " +
+                    action_id
+                );
+
+                if (action_id > 0) {
+                    // Execute action
+                    this._pinchAction(action_id);
+                }
+            } catch (err) {
+                log("Error Action = " + err);
+            }
+        }
+        this._clearVars();
+        return Clutter.EVENT_STOP;
+    }
+
+    // Pinch Handler
+    _pinchEventHandler(actor, event) {
+        if (!this._getPinchEnabled()) {
+            return Clutter.EVENT_PROPAGATE;
+        }
+        let numfingers = event.get_touchpad_gesture_finger_count();
+        if (numfingers != 3 && numfingers != 4) {
+            return Clutter.EVENT_PROPAGATE;
+        }
+        const pinch_scale = event.get_gesture_pinch_scale();
+
+        // Process gestures state
+        switch (event.get_gesture_phase()) {
+            case Clutter.TouchpadGesturePhase.BEGIN:
+                this._pinch.fingers = numfingers;
+                this._pinch.begin = true;
+                this._pinch.canceled = false;
+                this._pinch.action = 0;
+                return Clutter.EVENT_STOP;
+
+            case Clutter.TouchpadGesturePhase.UPDATE:
+                return this._pinchUpdate(pinch_scale);
+
+            default:
+                return this._pinchEnd();
+        }
+
+        return Clutter.EVENT_STOP;
+    }
+
     // Touch Event Handler
     _touchEvent(actor, event) {
+
+        // Only process swipe event
+        if (event.type() == Clutter.EventType.TOUCHPAD_PINCH)
+            return this._pinchEventHandler(actor, event);
+
         // Only process swipe event
         if (event.type() != Clutter.EventType.TOUCHPAD_SWIPE)
             return Clutter.EVENT_PROPAGATE;

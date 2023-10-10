@@ -88,6 +88,11 @@ export default class extends ExtensionPreferences {
             "App (Super+A)"
         ];
         const pinch = new Adw.PreferencesGroup({ title: "Pinch" });
+        this._createSwitch(
+            pinch, "pinch-enable",
+            "Enable Pinch",
+            "Enable pinch tracking"
+        );
         this._createCombo(pinch, "pinch3-in",
             "Pinch-In 3 Fingers", "", pinch_actions);
         this._createCombo(pinch, "pinch3-out",
@@ -96,6 +101,16 @@ export default class extends ExtensionPreferences {
             "Pinch-In 4 Fingers", "", pinch_actions);
         this._createCombo(pinch, "pinch4-out",
             "Pinch-Out 4 Fingers", "", pinch_actions);
+
+        this._createSpin(pinch, "pinch-in-scale",
+            "Pinch-In Trigger Scale Perentage",
+            "Trigger pinch-in if pinch scale lower than this value",
+            30, 80, 10);
+        this._createSpin(pinch, "pinch-out-scale",
+            "Pinch-Out Trigger Scale Perentage",
+            "Trigger pinch-out if pinch scale bigger than this value",
+            120, 200, 10);
+
 
         // Tweaks Settings
         const tweaks = new Adw.PreferencesGroup({ title: "Tweaks" });
