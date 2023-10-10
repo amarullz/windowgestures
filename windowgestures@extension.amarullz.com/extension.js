@@ -200,6 +200,23 @@ class Manager {
         return this._settings.get_boolean("three-finger") ? 3 : 4;
     }
 
+    // Functions Settings
+    _getUseActiveWindow() {
+        return this._settings.get_boolean("use-active-window");
+    }
+    _getEnableResize() {
+        return this._settings.get_boolean("fn-resize");
+    }
+    _getEnableMove() {
+        return this._settings.get_boolean("fn-move");
+    }
+    _getEnableMaxSnap() {
+        return this._settings.get_boolean("fn-maximized-snap");
+    }
+    _getEnableMoveSnap() {
+        return this._settings.get_boolean("fn-move-snap");
+    }
+
     // Check edge flags
     _isEdge(edge) {
         return ((this._edgeAction & edge) == edge);
@@ -232,6 +249,16 @@ class Manager {
             this._virtualKeyboard.notify_keyval(
                 currentTime, key, Clutter.KeyState.RELEASED
             ));
+    }
+
+    // Move Mouse Pointer
+    _movePointer(x, y) {
+        if (!this._getUseActiveWindow()) {
+            // Move only if not use active window
+            this._virtualTouchpad.notify_relative_motion(
+                global.get_current_time(), x, y
+            );
+        }
     }
 
     // Snap Window
@@ -339,27 +366,41 @@ class Manager {
         // Reset move position
         this._movePos.x = this._movePos.y = 0;
 
-        // Get actor in current mouse position
-        let currActor = global.stage.get_actor_at_pos(
-            Clutter.PickMode.REACTIVE, pointerX, pointerY
-        );
+        // Configs
+        let allowResize = this._getEnableResize();
+        let allowMove = this._getEnableMove();
 
-        // Find root window for current actor
-        let currWindow = currActor.get_parent();
-        let i = 0;
-        while (!currWindow.get_meta_window) {
-            currWindow = currWindow.get_parent();
-            // Hack for it to works, some apps only 1 level to root window,
-            // some apps is multiple parents to root window.
-            // loop until got the root (or max 10 level)
-            if (!currWindow || (++i > 10)) {
-                // cannot fetch root window, so ignore it!
+        if (this._getUseActiveWindow()) {
+            // Get Active Window
+            this._targetWindow = global.display.get_focus_window();
+            if (!this._targetWindow) {
                 return Clutter.EVENT_PROPAGATE;
             }
+            allowResize = false;
         }
+        else {
+            // Get actor in current mouse position
+            let currActor = global.stage.get_actor_at_pos(
+                Clutter.PickMode.REACTIVE, pointerX, pointerY
+            );
 
-        // Set meta window as target window to manage
-        this._targetWindow = currWindow.get_meta_window();
+            // Find root window for current actor
+            let currWindow = currActor.get_parent();
+            let i = 0;
+            while (!currWindow.get_meta_window) {
+                currWindow = currWindow.get_parent();
+                // Hack for it to works, some apps only 1 level to root window,
+                // some apps is multiple parents to root window.
+                // loop until got the root (or max 10 level)
+                if (!currWindow || (++i > 10)) {
+                    // cannot fetch root window, so ignore it!
+                    return Clutter.EVENT_PROPAGATE;
+                }
+            }
+
+            // Set meta window as target window to manage
+            this._targetWindow = currWindow.get_meta_window();
+        }
 
         // Set opener window as target if it was dialog
         if (this._targetWindow.is_attached_dialog()) {
@@ -396,7 +437,7 @@ class Manager {
         this._edgeGestured = false;
 
         // Check allow resize
-        if (this._targetWindow.allows_resize() &&
+        if (allowResize && this._targetWindow.allows_resize() &&
             this._targetWindow.allows_move()) {
             // Edge cursor position detection
             if (this._startPos.y >= wBottom - edge) {
@@ -438,7 +479,7 @@ class Manager {
             }
         }
         if (!this._isEdge(WindowEdgeAction.RESIZE)) {
-            if (this._startPos.y <= wTop + topEdge) {
+            if (allowMove && this._startPos.y <= wTop + topEdge) {
                 if (this._targetWindow.allows_move() &&
                     !this._targetWindow.get_maximized()) {
                     // Mouse in top side of window
@@ -531,9 +572,6 @@ class Manager {
 
     // On touch gesture updated
     _touchUpdate(dx, dy) {
-        // Set event time
-        const currentTime = global.get_current_time();
-
         // Moving coordinat
         this._movePos.x += dx;
         this._movePos.y += dy;
@@ -549,27 +587,44 @@ class Manager {
             return Clutter.EVENT_PROPAGATE;
         }
 
+        // Configs
+        let allowResize = this._getEnableResize();
+        let allowMove = this._getEnableMove();
+        let allowMaxSnap = this._getEnableMaxSnap();
+        let allowMoveSnap = this._getEnableMoveSnap();
+
         // Check edge flags
         if (this._isEdge(WindowEdgeAction.MOVE)) {
+            if (!allowMove) {
+                // Will not happening
+                return Clutter.EVENT_STOP;
+            }
             this._activateWindow();
 
             // Move cursor pointer
-            this._virtualTouchpad.notify_relative_motion(
-                currentTime, dx, dy
+            this._movePointer(
+                dx, dy
             );
 
             let edge = this._edgeSize();
-
             let mX = this._monitorArea.x;
             let mY = this._monitorArea.y;
             let mW = this._monitorArea.width;
-            let mH = this._monitorArea.height;
             let mR = mX + mW;
-            let mB = mY + mH;
 
-            let [pointerX, pointerY, pointerZ] = global.get_pointer();
+            // let [pointerX, pointerY, pointerZ] = global.get_pointer();
+            let hedge = edge / 2;
+            let winX = this._startWinArea.x + this._movePos.x;
+            let winY = this._startWinArea.y + this._movePos.y;
+            let winR = winX + this._startWinArea.width;
 
-            if (pointerX >= mX && pointerX <= mX + edge) {
+            // Move action
+            this._targetWindow.move_frame(
+                true,
+                winX, winY
+            );
+
+            if (allowMoveSnap && winX < mX) {
                 this._showPreview(
                     this._monitorArea.x,
                     this._monitorArea.y,
@@ -579,7 +634,7 @@ class Manager {
                 this._edgeAction = WindowEdgeAction.MOVE
                     | WindowEdgeAction.MOVE_SNAP_LEFT;
             }
-            else if (pointerX <= mR && pointerX >= mR - edge) {
+            else if (allowMoveSnap && winR > mR) {
                 this._showPreview(
                     this._monitorArea.x + (this._monitorArea.width / 2),
                     this._monitorArea.y,
@@ -589,7 +644,7 @@ class Manager {
                 this._edgeAction = WindowEdgeAction.MOVE
                     | WindowEdgeAction.MOVE_SNAP_RIGHT;
             }
-            else if (pointerY >= mY - edge && pointerY <= mY + edge) {
+            else if (allowMoveSnap && winY < mY) {
                 this._showPreview(
                     this._monitorArea.x,
                     this._monitorArea.y,
@@ -603,21 +658,17 @@ class Manager {
                 this._edgeAction = WindowEdgeAction.MOVE;
                 this._hidePreview();
             }
-
-
-            // Move action
-            this._targetWindow.move_frame(
-                true,
-                this._startWinArea.x + this._movePos.x,
-                this._startWinArea.y + this._movePos.y
-            );
         }
         else if (this._isEdge(WindowEdgeAction.RESIZE)) {
+            if (!allowResize) {
+                // Will not happening
+                return Clutter.EVENT_STOP;
+            }
+
             this._activateWindow();
 
             // Move cursor pointer
-            this._virtualTouchpad.notify_relative_motion(
-                currentTime,
+            this._movePointer(
                 (this._isEdge(WindowEdgeAction.RESIZE_LEFT) ||
                     this._isEdge(WindowEdgeAction.RESIZE_RIGHT)) ? dx : 0,
                 (this._isEdge(WindowEdgeAction.RESIZE_TOP) ||
@@ -726,7 +777,8 @@ class Manager {
                                 this._edgeGestured = true;
                             }
                             else {
-                                if (this._targetWindow.allows_move()) {
+                                if (allowMove &&
+                                    this._targetWindow.allows_move()) {
                                     this._edgeAction = WindowEdgeAction.MOVE;
                                 }
                             }
@@ -761,11 +813,13 @@ class Manager {
                         (this._targetWindow.get_maximized()
                             != Meta.MaximizeFlags.BOTH)) {
                         // Tile Left / Right if not maximize / fullscreen
-                        if (this._movePos.x <= 0 - threshold2x) {
+                        if (allowMaxSnap &&
+                            this._movePos.x <= 0 - threshold2x) {
                             this._edgeAction |=
                                 WindowEdgeAction.GESTURE_UP_LEFT;
                         }
-                        else if (this._movePos.x >= threshold2x) {
+                        else if (allowMaxSnap &&
+                            this._movePos.x >= threshold2x) {
                             this._edgeAction |=
                                 WindowEdgeAction.GESTURE_UP_RIGHT;
                         }
@@ -804,7 +858,8 @@ class Manager {
             if (this._edgeGestured) {
                 this._activateWindow();
                 if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
-                    if (this._isEdge(WindowEdgeAction.GESTURE_UP_LEFT)) {
+                    if (allowMaxSnap &&
+                        this._isEdge(WindowEdgeAction.GESTURE_UP_LEFT)) {
                         this._showPreview(
                             this._monitorArea.x,
                             this._monitorArea.y,
@@ -812,7 +867,8 @@ class Manager {
                             this._monitorArea.height
                         );
                     }
-                    else if (this._isEdge(WindowEdgeAction.GESTURE_UP_RIGHT)) {
+                    else if (allowMaxSnap &&
+                        this._isEdge(WindowEdgeAction.GESTURE_UP_RIGHT)) {
                         this._showPreview(
                             this._monitorArea.x + (this._monitorArea.width / 2),
                             this._monitorArea.y,
@@ -869,6 +925,10 @@ class Manager {
             return Clutter.EVENT_STOP;
         }
 
+        // Configs
+        let allowMaxSnap = this._getEnableMaxSnap();
+        let allowMoveSnap = this._getEnableMoveSnap();
+
         /* Check Gestures */
         if (this._isEdge(WindowEdgeAction.WAIT_GESTURE)) {
             if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
@@ -883,10 +943,12 @@ class Manager {
                     }
                 }
                 else if (this._targetWindow.can_maximize()) {
-                    if (this._isEdge(WindowEdgeAction.GESTURE_UP_LEFT)) {
+                    if (allowMaxSnap &&
+                        this._isEdge(WindowEdgeAction.GESTURE_UP_LEFT)) {
                         this._setSnapWindow(0);
                     }
-                    else if (this._isEdge(WindowEdgeAction.GESTURE_UP_RIGHT)) {
+                    else if (allowMaxSnap &&
+                        this._isEdge(WindowEdgeAction.GESTURE_UP_RIGHT)) {
                         this._setSnapWindow(1);
                     }
                     else {
@@ -914,7 +976,7 @@ class Manager {
                 this._moveWindowWorkspace(0);
             }
         }
-        else if (this._isEdge(WindowEdgeAction.MOVE)) {
+        else if (allowMoveSnap && this._isEdge(WindowEdgeAction.MOVE)) {
             if (this._isEdge(WindowEdgeAction.MOVE_SNAP_TOP)) {
                 if (this._targetWindow.can_maximize()) {
                     this._resetWinPos();
