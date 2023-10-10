@@ -1016,17 +1016,6 @@ class Manager {
         return Clutter.EVENT_STOP;
     }
 
-    setTimeout(func, delay, ...args) {
-        return GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
-            func(...args);
-            return GLib.SOURCE_REMOVE;
-        });
-    }
-
-    clearTimeout(id) {
-        GLib.source_remove(id);
-    }
-
     // Run Action
     _pinchAction(id) {
         const _LCASE = 32;
