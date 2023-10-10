@@ -1055,6 +1055,26 @@ class Manager {
             // Show Apps (Super+A)
             this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_A + _LCASE]);
         }
+        else if (id == 6) {
+            // Quick Settings (Super+S)
+            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_S + _LCASE]);
+        }
+        else if (id == 7) {
+            // Notification (Super+V)
+            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_V + _LCASE]);
+        }
+        else if (id == 8) {
+            // Run (Alt+F2)
+            this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F2]);
+        }
+        else if (id == 9) {
+            // Move Window (Alt+F7)
+            this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F7]);
+        }
+        else if (id == 10) {
+            // Resize (Alt+F8)
+            this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F8]);
+        }
     }
 
     // Update Pinch
