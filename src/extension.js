@@ -1146,6 +1146,10 @@ class Manager {
     _pinchAction(id) {
         const _LCASE = 32;
         if (id == 1) {
+            if (this._isOnOverview()) {
+                // Ignore on overview
+                return;
+            }
             // Minimize
             let activeWin = global.display.get_focus_window();
             if (activeWin) {
@@ -1155,18 +1159,34 @@ class Manager {
             }
         }
         else if (id == 2) {
+            if (this._isOnOverview()) {
+                // Ignore on overview
+                return;
+            }
             // Close Window (ALT+F4)
             this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F4]);
         }
         else if (id == 3) {
+            if (this._isOnOverview()) {
+                // Ignore on overview
+                return;
+            }
             // Show Desktop (Super+D)  Clutter.KEY_D
             this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_D + _LCASE]);
         }
         else if (id == 4) {
+            if (this._isOnOverview()) {
+                // Ignore on overview
+                return;
+            }
             // ALT+TAB
             this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_Tab]);
         }
         else if ((id == 5) || (id == 6)) {
+            if (this._isOnOverview()) {
+                // Ignore on overview
+                return;
+            }
             // Next/Prev Window
             let gestureValue = (id == 5) ? 1 : -1;
             let focusWindow = global.display.get_focus_window();
