@@ -1,7 +1,7 @@
 #!/bin/sh
 
 ## compile schemas
-cd windowgestures@extension.amarullz.com
+cd src
 
 ## Remove compiled schemas
 rm schemas/gschemas.compiled

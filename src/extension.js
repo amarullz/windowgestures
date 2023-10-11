@@ -19,6 +19,8 @@
 import Clutter from 'gi://Clutter';
 import Meta from 'gi://Meta';
 import GLib from 'gi://GLib';
+import St from 'gi://St';
+import GObject from 'gi://GObject';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -57,8 +59,42 @@ const WindowClassBlacklist = [
     "gjs"
 ];
 
+// Indicator All
+class WGSArrowClass extends St.Widget {
+    constructor(style_class) {
+        super({ style_class: 'gie-circle ' + style_class });
+        this._arrow_icon = new St.Icon({
+            icon_name: 'go-previous-symbolic',
+            style_class: 'gie-arrow-icon'
+        });
+        this.set_clip_to_allocation(true);
+        this.add_child(this._arrow_icon);
+        this.set_size(
+            32, 32
+        );
+    }
+}
+
 // Manager Class
 class Manager {
+    // Init Arrow
+    _initArrow() {
+        const WGSArrow = GObject.registerClass(WGSArrowClass);
+        this._myArrow = new WGSArrow('gie-inner-circle');
+        this._myArrow.hide();
+        Main.layoutManager.uiGroup.add_child(this._myArrow);
+        // this._myArrow.show();
+        this._myArrow.set_position(
+            200, 200
+        );
+    }
+
+    // Clear Arrow
+    _destroyArrow() {
+        this._myArrow.destroy();
+        this._myArrow = null;
+    }
+
     // Init Extension
     constructor(ext) {
         // Get settings
@@ -84,6 +120,9 @@ class Manager {
 
         // init 3 or 4 fingers config support
         this._initFingerCountFlip();
+
+        // Init arrow
+        this._initArrow();
     }
 
     // Cleanup Extension
@@ -101,6 +140,9 @@ class Manager {
         // Cleanup all variables
         this._clearVars();
         this._settings = null;
+
+        // Destroy Arrow
+        this._destroyArrow();
     }
 
     // Init 3 or 4 finger count switch mode

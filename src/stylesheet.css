@@ -1,0 +1,21 @@
+.gie-circle {
+    border-radius: 5px;
+}
+
+.gie-inner-circle {
+    border: solid 2px #396bd7;
+    color: #396bd7;
+    background-color: #ffffff;
+}
+
+.gie-arrow-icon {
+    color: #396bd7;
+    margin: 10px 10px;
+    /* (50+2 - 32)/2 */
+    icon-size: 32px;
+}
+
+.gie-outer-circle {
+    background-color: rgba(68, 120, 175, 0.5);
+    border: solid 2px;
+}
