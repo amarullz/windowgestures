@@ -216,6 +216,10 @@ class Manager {
     _getEnableMoveSnap() {
         return this._settings.get_boolean("fn-move-snap");
     }
+    _getEnableFullscreen() {
+        return this._settings.get_boolean("fn-fullscreen");
+    }
+
 
     _getPinchInScale() {
         return this._settings.get_int('pinch-in-scale');
@@ -970,7 +974,9 @@ class Manager {
                 if (this._targetWindow.get_maximized() ==
                     Meta.MaximizeFlags.BOTH) {
                     if (!this._targetWindow.is_fullscreen()) {
-                        this._targetWindow.make_fullscreen();
+                        if (this._getEnableFullscreen()) {
+                            this._targetWindow.make_fullscreen();
+                        }
                     }
                     else {
                         this._targetWindow.unmake_fullscreen();

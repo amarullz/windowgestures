@@ -68,6 +68,11 @@ export default class extends ExtensionPreferences {
             "Enable move function"
         );
         this._createSwitch(
+            fn, "fn-fullscreen",
+            "Enable Fullscreen",
+            "Enable fullscreen function"
+        );
+        this._createSwitch(
             fn, "fn-maximized-snap",
             "Enable Maximized Snap",
             "Enable swipe up then left/right gesture to maximized to side"
