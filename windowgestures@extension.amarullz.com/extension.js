@@ -52,6 +52,11 @@ const WindowEdgeAction = {
 
 };
 
+// Window Blacklist Classes
+const WindowClassBlacklist = [
+    "gjs"
+];
+
 // Manager Class
 class Manager {
     // Init Extension
@@ -160,6 +165,15 @@ class Manager {
             );
         });
         this._swipeMods = [];
+    }
+
+    _isWindowBlacklist(win) {
+        if (win) {
+            if (WindowClassBlacklist.indexOf(win.get_wm_class()) == -1) {
+                return false;
+            }
+        }
+        return true;
     }
 
     // Get padding edge size
@@ -443,6 +457,12 @@ class Manager {
         // Set opener window as target if it was dialog
         if (this._targetWindow.is_attached_dialog()) {
             this._targetWindow = this._targetWindow.get_transient_for();
+        }
+
+        // Check blacklist window
+        if (this._isWindowBlacklist(this._targetWindow)) {
+            this._targetWindow = null;
+            return Clutter.EVENT_PROPAGATE;
         }
 
         // Get monitor area
