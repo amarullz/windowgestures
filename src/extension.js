@@ -61,17 +61,48 @@ const WindowClassBlacklist = [
 
 // Indicator All
 class WGSArrowClass extends St.Widget {
-    constructor(style_class) {
-        super({ style_class: 'gie-circle ' + style_class });
+    constructor() {
+        super({ style_class: 'wgs-widget-indicator' });
         this._arrow_icon = new St.Icon({
             icon_name: 'go-previous-symbolic',
-            style_class: 'gie-arrow-icon'
+            style_class: 'wgs-widget-indicator-icon'
         });
         this.set_clip_to_allocation(true);
         this.add_child(this._arrow_icon);
         this.set_size(
-            32, 32
+            64, 64
         );
+        this.set_pivot_point(0.5, 0.5);
+    }
+
+    viewShow() {
+        this.opacity = 0;
+        this.scale_x = 0;
+        this.scale_y = 0;
+        this.show();
+        this.ease({
+            opacity: 255,
+            scale_x: 1,
+            scale_y: 1,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            duration: 500
+        });
+    }
+
+    viewHide() {
+        this.ease({
+            opacity: 0,
+            scale_x: 0,
+            scale_y: 0,
+            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+            duration: 500,
+            onStopped: () => {
+                this.hide();
+                this.opacity = 0;
+                this.scale_x = 0;
+                this.scale_y = 0;
+            }
+        });
     }
 }
 
@@ -80,10 +111,9 @@ class Manager {
     // Init Arrow
     _initArrow() {
         const WGSArrow = GObject.registerClass(WGSArrowClass);
-        this._myArrow = new WGSArrow('gie-inner-circle');
+        this._myArrow = new WGSArrow();
         this._myArrow.hide();
         Main.layoutManager.uiGroup.add_child(this._myArrow);
-        // this._myArrow.show();
         this._myArrow.set_position(
             200, 200
         );
@@ -289,6 +319,11 @@ class Manager {
         return this._settings.get_boolean("pinch-enable");
     }
 
+    // Is On Overview
+    _isOnOverview() {
+        return Main.overview._shown;
+    }
+
     // Check edge flags
     _isEdge(edge) {
         return ((this._edgeAction & edge) == edge);
@@ -450,6 +485,11 @@ class Manager {
 
     // On touch gesture started
     _touchStarted() {
+        // Stop if it was on overview
+        if (this._isOnOverview()) {
+            return Clutter.EVENT_STOP;
+        }
+
         // Get current mouse position
         let [pointerX, pointerY, pointerZ] = global.get_pointer();
 
@@ -593,6 +633,9 @@ class Manager {
 
     // On touch gesture updated no targetWindow
     _touchUpdateNoWindow() {
+        if (this._isOnOverview()) {
+            return Clutter.EVENT_STOP;
+        }
         let threshold = this._gestureThreshold();
         let absX = Math.abs(this._movePos.x);
         let absY = Math.abs(this._movePos.y);
@@ -1260,6 +1303,7 @@ class Manager {
 
     // End Pinch
     _pinchEnd() {
+        this._myArrow.viewHide();
         this.clearInterval(this._pinch.interval);
         this._pinch.interval = 0;
 
@@ -1290,6 +1334,7 @@ class Manager {
                 this._pinch.begin = true;
                 this._pinch.canceled = false;
                 this._pinch.action = 0;
+                this._myArrow.viewShow();
                 return Clutter.EVENT_STOP;
 
             case Clutter.TouchpadGesturePhase.UPDATE:

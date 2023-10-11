@@ -1,21 +1,12 @@
-.gie-circle {
-    border-radius: 5px;
+.wgs-widget-indicator-icon {
+    color: #000;
+    margin: 10px;
+    width: 24px;
+    height: 24px;
 }
 
-.gie-inner-circle {
-    border: solid 2px #396bd7;
-    color: #396bd7;
-    background-color: #ffffff;
-}
-
-.gie-arrow-icon {
-    color: #396bd7;
-    margin: 10px 10px;
-    /* (50+2 - 32)/2 */
-    icon-size: 32px;
-}
-
-.gie-outer-circle {
-    background-color: rgba(68, 120, 175, 0.5);
-    border: solid 2px;
+.wgs-widget-indicator {
+    border-radius: 8px;
+    border: 4px solid #357;
+    background-color: rgba(255, 255, 255, .5);
 }
