@@ -71,9 +71,9 @@ class Manager {
         if (icon) {
             ui._icon = new St.Icon({
                 icon_name: icon,
-                style_class: 'wgs-widget-indicator-icon'
+                style_class: 'wgs-widget-icon'
             });
-            ui.add_child(this._arrow_icon);
+            ui.add_child(ui._icon);
         }
         ui.set_position(x, y);
         ui.set_size(w, h);
@@ -1184,7 +1184,7 @@ class Manager {
                 this._pinch.progress = 0;
             }
 
-            if (this._pinch.action && this._pinch.action_cmp &&
+            if (this._pinch.action_cmp &&
                 (this._pinch.action != this._pinch.action_cmp)) {
                 // Send Cancel State
                 this._runAction(this._pinch.action_cmp, 1, 0);
@@ -1313,7 +1313,7 @@ class Manager {
             if (ui && ui != -1) {
                 if (!state) {
                     ui.set_pivot_point(0.5, 1.5);
-                    ui.opacity = 255 - Math.round(127 * progress);
+                    ui.opacity = 255 - Math.round(64 * progress);
                     ui.scale_x = 1.0 - (0.5 * progress);
                     ui.scale_y = 1.0 - (0.5 * progress);
                 }
@@ -1404,7 +1404,7 @@ class Manager {
             if (ui && ui != -1) {
                 if (!state) {
                     ui.set_pivot_point(0.5, 0.5);
-                    ui.opacity = 255 - Math.round(160 * progress);
+                    ui.opacity = 255 - Math.round(127 * progress);
                     ui.scale_x = 1.0 - (progress * 0.25);
                     ui.scale_y = 1.0 - (progress * 0.25);
                     ui._layer.opacity = Math.round(255 * progress);
@@ -1486,7 +1486,7 @@ class Manager {
                 if (!state) {
                     ui.forEach((aui) => {
                         aui.set_pivot_point(0.5, 0.5);
-                        aui.opacity = 255 - Math.round(100 * progress);
+                        aui.opacity = 255 - Math.round(210 * progress);
                         aui.scale_x = 1.0 - (progress * 0.4);
                         aui.scale_y = 1.0 - (progress * 0.4);
                     });
@@ -1602,21 +1602,88 @@ class Manager {
             // Run (Alt+F2)
             this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F2]);
         }
-        else if (id == 12) {
-            if (!state || progress < 1.0) {
-                // Ignore if non end
+        else if (id >= 12 && id <= 13) {
+            // CLOSE WINDOW ACTION
+            if (this._isOnOverview()) { // Ignore on overview
                 return;
             }
-            // Move Window (Alt+F7)
-            this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F7]);
-        }
-        else if (id == 13) {
-            if (!state || progress < 1.0) {
-                // Ignore if non end
-                return;
+
+            const keyList = [
+                Clutter.KEY_Back,
+                Clutter.KEY_Forward
+            ];
+            let kid = id - 12;
+            let activeWin = null;
+            let kidw = kid ? 'btnforward' : 'btnback';
+            let ui = this._actionWidgets[kidw];
+
+            // Init indicator
+            if (!ui) {
+                activeWin = global.display.get_focus_window();
+                if (this._isWindowBlacklist(activeWin)) {
+                    activeWin = null;
+                }
+                if (activeWin) {
+                    let uipar = activeWin.get_compositor_private();
+                    if (uipar) {
+                        let wrect = activeWin.get_frame_rect();
+                        let uix = ((uipar.get_width() - wrect.width) / 2);
+                        let uiy = (uipar.get_height() / 2) - 32;
+                        if (kid) {
+                            uix += wrect.width - 128;
+                        }
+                        else {
+                            uix += 64;
+                        }
+                        ui = this._createUi(
+                            'wgs-indicator-backforward',
+                            uix,
+                            uiy,
+                            64, 64,
+                            kid ? 'pan-end-symbolic.symbolic' :
+                                'pan-start-symbolic.symbolic',
+                            uipar
+                        );
+                        if (ui) {
+                            ui.translation_x = kid ? -32 : 32;
+                            ui.opacity = 0;
+                        }
+                        else {
+                            ui = -1;
+                        }
+                        this._actionWidgets[kidw] = ui;
+                    }
+                    else {
+                        this._actionWidgets[kidw] = -1;
+                    }
+                }
+                else {
+                    this._actionWidgets[kidw] = -1;
+                }
             }
-            // Resize (Alt+F8)
-            this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F8]);
+
+            // Execute Progress
+            if (ui && ui != -1) {
+                if (!state) {
+                    if (kid) {
+                        ui.translation_x = 32 - (32 * progress);
+                    }
+                    else {
+                        ui.translation_x = (32 * progress) - 32;
+                    }
+                    ui.opacity = Math.round(255 * progress);
+                }
+                else {
+                    // Action is executed
+                    if (progress >= 1.0) {
+                        this._sendKeyPress([keyList[kid]]);
+                    }
+                    ui.release();
+                    this._actionWidgets[kidw] = ui = null;
+                }
+            } else if (state) {
+                this._actionWidgets[kidw] = ui = null;
+            }
         }
         else if (id >= 14 && id <= 18) {
             const keyList = [
