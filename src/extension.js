@@ -1192,8 +1192,7 @@ class Manager {
             let action_id = this._pinchGetCurrentActionId();
             if (action_id) {
                 this._runAction(action_id, 0,
-                    /* Acceleration Interpolator */
-                    this._pinch.progress * this._pinch.progress
+                    this._pinch.progress
                 );
             }
         }
@@ -1295,17 +1294,11 @@ class Manager {
             if (!ui) {
                 activeWin = global.display.get_focus_window();
                 if (activeWin && activeWin.can_minimize()) {
-                    let wrect = activeWin.get_frame_rect();
-                    ui = this._createUi(
-                        'wgs-indicator-minimize',
-                        wrect.x + wrect.width / 4, wrect.y + wrect.height / 4,
-                        wrect.width / 2, wrect.height / 2, null
-                    );
-                    ui.opacity = 0;
-                    ui.scale_x = 2;
-                    ui.scale_y = 2;
-                    ui.show();
+                    ui = activeWin.get_compositor_private();
                     this._actionWidgets.minimize = ui;
+                    if (ui) {
+                        ui.set_pivot_point(0.5, 1);
+                    }
                 }
                 else {
                     this._actionWidgets.minimize = ui = -1;
@@ -1315,24 +1308,51 @@ class Manager {
             // Execute Progress
             if (ui && ui != -1) {
                 if (!state) {
-                    ui.opacity = Math.round(255 * progress);
-                    ui.scale_x = 2.0 - progress;
-                    ui.scale_y = 2.0 - progress;
+                    ui.opacity = 255 - Math.round(127 * progress);
+                    ui.scale_x = 1.0 - (0.5 * progress);
+                    ui.scale_y = 1.0 - (0.5 * progress);
                 }
                 else {
-                    // Remove Indicator
-                    ui.aniRelease(progress);
-                    this._actionWidgets.minimize = ui = null;
-
                     // Action is executed
+                    activeWin = null;
                     if (progress >= 1.0) {
                         activeWin = global.display.get_focus_window();
                         if (activeWin) {
-                            if (activeWin.can_minimize()) {
-                                activeWin.minimize();
+                            if (!activeWin.can_minimize()) {
+                                activeWin = null;
                             }
                         }
                     }
+
+                    // Restore
+                    ui.ease({
+                        duration: Math.round(250 * progress),
+                        mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                        opacity: activeWin ? 0 : 255,
+                        scale_x: activeWin ? 0 : 1,
+                        scale_y: activeWin ? 0 : 1,
+                        onStopped: () => {
+                            ui.set_pivot_point(0, 0);
+                            if (activeWin) {
+                                activeWin.minimize();
+                                ui.opacity = 0;
+                                ui.ease({
+                                    duration: 800,
+                                    opacity: 0,
+                                    onStopped: () => {
+                                        ui.opacity = 255;
+                                        ui.scale_x = 1;
+                                        ui.scale_y = 1;
+                                        ui = null;
+                                    }
+                                });
+                            }
+                            else {
+                                ui = null;
+                            }
+                        }
+                    });
+                    this._actionWidgets.minimize = null;
                 }
             } else if (state) {
                 this._actionWidgets.minimize = ui = null;
@@ -1351,16 +1371,11 @@ class Manager {
             if (!ui) {
                 activeWin = global.display.get_focus_window();
                 if (activeWin) {
-                    let wrect = activeWin.get_frame_rect();
-                    ui = this._createUi(
-                        'wgs-indicator-close',
-                        wrect.x, wrect.y, wrect.width, wrect.height, null
-                    );
-                    ui.opacity = 0;
-                    ui.scale_x = 0.5;
-                    ui.scale_y = 0.5;
-                    ui.show();
+                    ui = activeWin.get_compositor_private();
                     this._actionWidgets.close = ui;
+                    if (ui) {
+                        ui.set_pivot_point(0.5, 0.5);
+                    }
                 }
                 else {
                     this._actionWidgets.close = ui = -1;
@@ -1370,25 +1385,44 @@ class Manager {
             // Execute Progress
             if (ui && ui != -1) {
                 if (!state) {
-                    ui.opacity = Math.round(255 * progress);
-                    ui.scale_x = 0.5 + (progress * 0.5);
-                    ui.scale_y = 0.5 + (progress * 0.5);
+                    ui.opacity = 255 - Math.round(160 * progress);
+                    ui.scale_x = 1.0 - (progress * 0.25);
+                    ui.scale_y = 1.0 - (progress * 0.25);
                 }
                 else {
-                    // Remove Indicator
-                    ui.aniRelease(progress);
-                    this._actionWidgets.close = ui = null;
+                    activeWin = null;
 
                     // Action is executed
                     if (progress >= 1.0) {
                         activeWin = global.display.get_focus_window();
-                        if (activeWin) {
-                            /* Send ALT+F4 */
-                            this._sendKeyPress([
-                                Clutter.KEY_Alt_L, Clutter.KEY_F4
-                            ]);
-                        }
                     }
+
+                    let me = this;
+                    ui.ease({
+                        duration: Math.round(250 * progress),
+                        mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                        opacity: activeWin ? 0 : 255,
+                        scale_x: activeWin ? 0 : 1,
+                        scale_y: activeWin ? 0 : 1,
+                        onStopped: () => {
+                            ui.set_pivot_point(0, 0);
+                            if (activeWin) {
+                                ui.hide();
+                                ui.opacity = 0;
+                                ui.ease({
+                                    duration: 800,
+                                    opacity: 0
+                                });
+                                me._sendKeyPress([
+                                    Clutter.KEY_Alt_L, Clutter.KEY_F4
+                                ]);
+                            }
+                            ui = null;
+                            me = null;
+                        }
+                    });
+
+                    this._actionWidgets.close = null;
                 }
             } else if (state) {
                 this._actionWidgets.close = ui = null;
@@ -1404,17 +1438,16 @@ class Manager {
 
             // Init indicator
             if (!ui) {
-                let monitorArea = global.display.get_monitor_geometry(0);
-                if (monitorArea) {
-                    ui = this._createUi(
-                        'wgs-indicator-showdesktop',
-                        monitorArea.x, monitorArea.y,
-                        monitorArea.width, monitorArea.height, null
-                    );
-                    ui.opacity = 0;
-                    ui.scale_x = 0.5;
-                    ui.scale_y = 0.5;
-                    ui.show();
+                let monitorArea = global.display.list_all_windows();
+                if (monitorArea.length > 0) {
+                    ui = [];
+                    for (var i = 0; i < monitorArea.length; i++) {
+                        let aui = monitorArea[i].get_compositor_private();
+                        if (aui) {
+                            ui.push(aui);
+                            aui.set_pivot_point(0.5, 0.5);
+                        }
+                    }
                     this._actionWidgets.show_desktop = ui;
                 }
                 else {
@@ -1425,15 +1458,13 @@ class Manager {
             // Execute Progress
             if (ui && ui != -1) {
                 if (!state) {
-                    ui.opacity = Math.round(255 * progress);
-                    ui.scale_x = 0.5 + (progress * 0.5);
-                    ui.scale_y = 0.5 + (progress * 0.5);
+                    ui.forEach((aui) => {
+                        aui.opacity = 255 - Math.round(100 * progress);
+                        aui.scale_x = 1.0 - (progress * 0.4);
+                        aui.scale_y = 1.0 - (progress * 0.4);
+                    });
                 }
                 else {
-                    // Remove Indicator
-                    ui.aniRelease(progress);
-                    this._actionWidgets.show_desktop = ui = null;
-
                     // Action is executed
                     if (progress >= 1.0) {
                         // Show Desktop (Super+D)  Clutter.KEY_D
@@ -1442,6 +1473,21 @@ class Manager {
                             Clutter.KEY_D + _LCASE]
                         );
                     }
+
+                    ui.forEach((aui) => {
+                        aui.ease({
+                            duration: Math.round(250 * progress),
+                            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                            opacity: 255,
+                            scale_x: 1,
+                            scale_y: 1,
+                            onStopped: () => {
+                                aui.set_pivot_point(0, 0);
+                            }
+                        });
+                    });
+
+                    this._actionWidgets.show_desktop = ui = null;
                 }
             } else if (state) {
                 this._actionWidgets.show_desktop = ui = null;
