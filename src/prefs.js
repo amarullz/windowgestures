@@ -35,11 +35,6 @@ export default class extends ExtensionPreferences {
         // Gesture Settings
         const gestures = new Adw.PreferencesGroup({ title: "Gestures" });
         this._createSwitch(
-            gestures, "no-count-flip",
-            "Keep System Gesture",
-            "If true, extension will not hook system gesture events but Use 3 Fingers config cannot be used. Need re-enable extension to take effect"
-        );
-        this._createSwitch(
             gestures, "three-finger",
             "Use 3 Fingers",
             "If true, window gestures will use three fingers, and workspace will use four finger"

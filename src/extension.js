@@ -133,6 +133,9 @@ class Manager {
         // Get settings
         this._settings = ext.getSettings();
 
+        // Gestures are hooked by WGS
+        this._hooked = false;
+
         // Create virtual devices
         const seat = Clutter.get_default_backend().get_default_seat();
         this._virtualTouchpad = seat.create_virtual_device(
@@ -177,12 +180,6 @@ class Manager {
 
     // Init 3 or 4 finger count switch mode
     _initFingerCountFlip() {
-        // Don't mess with system gesture handlers
-        if (this._settings.get_boolean("no-count-flip")) {
-            this._swipeMods = [];
-            return;
-        }
-
         // Move 3-4 Finger Gesture
         /*
          * Original Hook Logic From (swap-finger-gestures):
@@ -203,17 +200,18 @@ class Manager {
                 event._get_touchpad_gesture_finger_count =
                     event.get_touchpad_gesture_finger_count;
                 event.get_touchpad_gesture_finger_count = () => {
-                    var real_count = event._get_touchpad_gesture_finger_count();
-                    if (real_count == me._gestureNumFinger()) {
+                    let real_count = event._get_touchpad_gesture_finger_count();
+                    if (me._hooked || (real_count == me._gestureNumFinger())) {
                         return 0;
                     }
                     else if (real_count >= 3) {
-                        /* Default GNOME 3 finger gesture */
                         return 3;
                     }
-                    /* Ignore next */
                     return 0;
                 };
+                if (me._hooked) {
+                    return Clutter.EVENT_STOP;
+                }
                 return g._handleEvent(actor, event);
             };
             global.stage.disconnectObject(g);
@@ -281,8 +279,6 @@ class Manager {
 
     // Is 3 Finger
     _gestureNumFinger() {
-        if (this._settings.get_boolean("no-count-flip"))
-            return 4;
         return this._settings.get_boolean("three-finger") ? 3 : 4;
     }
 
