@@ -1142,16 +1142,28 @@ class Manager {
         return Clutter.EVENT_STOP;
     }
 
+    _actionIdGet(type) {
+        let cfg_name = "";
+        switch (type) {
+            case 3: cfg_name = "pinch3-in"; break;
+            case 4: cfg_name = "pinch3-out"; break;
+            case 5: cfg_name = "pinch4-in"; break;
+            case 6: cfg_name = "pinch4-out"; break;
+            default: return 0;
+        }
+        return this._settings.get_int(cfg_name);
+    }
+
     // Get Current Action Id
     _pinchGetCurrentActionId() {
         if (this._pinch.begin && this._pinch.action != 0) {
             if (this._pinch.action != this._pinch.action_cmp) {
-                try {
-                    let cfg_name = "pinch" + this._pinch.fingers + "-" +
-                        ((this._pinch.action == 1) ? "in" : "out");
-                    this._pinch.action_id = this._settings.get_int(cfg_name);
-                    this._pinch.action_cmp = this._pinch.action;
-                } catch (e) { }
+                this._pinch.action_id = this._actionIdGet(
+                    (this._pinch.fingers == 3) ?
+                        this._pinch.action + 2 :
+                        this._pinch.action + 4
+                );
+                this._pinch.action_cmp = this._pinch.action;
             }
             return this._pinch.action_id;
         }
@@ -1187,7 +1199,14 @@ class Manager {
             if (this._pinch.action_cmp &&
                 (this._pinch.action != this._pinch.action_cmp)) {
                 // Send Cancel State
-                this._runAction(this._pinch.action_cmp, 1, 0);
+                let aid = this._actionIdGet(
+                    (this._pinch.fingers == 3) ?
+                        this._pinch.action_cmp + 2 :
+                        this._pinch.action_cmp + 4
+                );
+                if (aid) {
+                    this._runAction(aid, 1, 0);
+                }
             }
 
             let action_id = this._pinchGetCurrentActionId();
