@@ -98,8 +98,8 @@ class Manager {
             if (progress > 0.2) {
                 ui.ease({
                     opacity: 0,
-                    scale_x: 0.5,
-                    scale_y: 0.5,
+                    scale_x: 0.8,
+                    scale_y: 0.8,
                     duration: Math.round(250 * progress),
                     mode: Clutter.AnimationMode.EASE_OUT_QUAD,
                     onStopped: () => {
@@ -1191,45 +1191,11 @@ class Manager {
 
             let action_id = this._pinchGetCurrentActionId();
             if (action_id) {
-                this._runAction(action_id, 0, this._pinch.progress);
+                this._runAction(action_id, 0,
+                    /* Acceleration Interpolator */
+                    this._pinch.progress * this._pinch.progress
+                );
             }
-
-            // if (this._pinch.action == 0) {
-            //     if (pinch_scale <= pIn) {
-            //         this._pinch.action = 1;
-            //     }
-            //     else if (pinch_scale >= pOut) {
-            //         this._pinch.action = 2;
-            //     }
-            // }
-            // else if (this._pinch.action == 1) {
-            //     // Pinch-In
-            //     this._pinch.canceled = (pinch_scale <= pIn) ? false : true;
-            // }
-            // else if (this._pinch.action == 2) {
-            //     // Pinch-Out
-            //     this._pinch.canceled = (pinch_scale >= pOut) ? false : true;
-            // }
-            // if (this._pinch.action != 0) {
-            //     let action_id = this._pinchGetCurrentActionId(0);
-            //     // Repeatable Keys
-            //     if (this._isRepeatAction(action_id)) {
-            //         if (this._pinch.interval == 0) {
-            //             this._pinch.isrepeat = true;
-            //             this._runAction(action_id);
-            //             let me = this;
-            //             this._pinch.interval = this.setInterval(
-            //                 function () {
-            //                     if (me._pinch.interval_wait >= 5) {
-            //                         me._runAction(action_id);
-            //                     } else {
-            //                         me._pinch.interval_wait++;
-            //                     }
-            //                 }, 100
-            //             );
-            //         }
-            //     }
-            // }
         }
         return Clutter.EVENT_STOP;
     }
@@ -1429,16 +1395,58 @@ class Manager {
             }
         }
         else if (id == 3) {
-            if (this._isOnOverview()) {
-                // Ignore on overview
+            // SHOW DESKTOP
+            if (this._isOnOverview()) { // Ignore on overview
                 return;
             }
-            if (!state || progress < 1.0) {
-                // Ignore if non end
-                return;
+
+            let ui = this._actionWidgets.show_desktop;
+
+            // Init indicator
+            if (!ui) {
+                let monitorArea = global.display.get_monitor_geometry(0);
+                if (monitorArea) {
+                    ui = this._createUi(
+                        'wgs-indicator-showdesktop',
+                        monitorArea.x, monitorArea.y,
+                        monitorArea.width, monitorArea.height, null
+                    );
+                    ui.opacity = 0;
+                    ui.scale_x = 0.5;
+                    ui.scale_y = 0.5;
+                    ui.show();
+                    this._actionWidgets.show_desktop = ui;
+                }
+                else {
+                    this._actionWidgets.show_desktop = ui = -1;
+                }
             }
-            // Show Desktop (Super+D)  Clutter.KEY_D
-            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_D + _LCASE]);
+
+            // Execute Progress
+            if (ui && ui != -1) {
+                if (!state) {
+                    ui.opacity = Math.round(255 * progress);
+                    ui.scale_x = 0.5 + (progress * 0.5);
+                    ui.scale_y = 0.5 + (progress * 0.5);
+                }
+                else {
+                    // Remove Indicator
+                    ui.aniRelease(progress);
+                    this._actionWidgets.show_desktop = ui = null;
+
+                    // Action is executed
+                    if (progress >= 1.0) {
+                        // Show Desktop (Super+D)  Clutter.KEY_D
+                        this._sendKeyPress(
+                            [Clutter.KEY_Super_L,
+                            Clutter.KEY_D + _LCASE]
+                        );
+                    }
+                }
+            } else if (state) {
+                this._actionWidgets.show_desktop = ui = null;
+            }
+
         }
         else if (id == 4) {
             if (this._isOnOverview()) {
@@ -1538,20 +1546,53 @@ class Manager {
             this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F8]);
         }
         else if (id >= 14 && id <= 18) {
-            if (!state || progress < 1.0) {
-                // Ignore if non end
-                return;
-            }
-            let aid = id - 14;
-            const audiokeys = [
+            const keyList = [
                 Clutter.KEY_AudioRaiseVolume,
                 Clutter.KEY_AudioLowerVolume,
                 Clutter.KEY_AudioMute,
                 Clutter.KEY_MonBrightnessUp,
                 Clutter.KEY_MonBrightnessDown,
             ];
-            // Resize (Alt+F8)
-            this._sendKeyPress([audiokeys[aid]]);
+            let wid = 'keys_' + id;
+            let cid = 'keysn_' + id;
+            let keyId = keyList[id - 14];
+            let isRepeat = (id != 16);
+
+            if (!state && (progress >= 1)) {
+                if (isRepeat) {
+                    if (!this._actionWidgets[wid]) {
+                        let me = this;
+                        this._actionWidgets[cid] = 0;
+                        this._sendKeyPress([keyId]);
+                        this._actionWidgets[wid] = this.setInterval(
+                            function () {
+                                if (me._actionWidgets[cid] >= 5) {
+                                    me._sendKeyPress([keyId]);
+                                }
+                                else {
+                                    me._actionWidgets[cid]++;
+                                }
+                            },
+                            100
+                        );
+                    }
+                }
+                else {
+                    if (!this._actionWidgets[wid]) {
+                        // Non-Repeat
+                        this._actionWidgets[wid] = -1;
+                        this._sendKeyPress([keyId]);
+                    }
+                }
+            }
+
+            if (state) {
+                if (isRepeat && this._actionWidgets[wid]) {
+                    this.clearInterval(this._actionWidgets[wid]);
+                }
+                this._actionWidgets[wid] = 0;
+                this._actionWidgets[cid] = 0;
+            }
         }
     }
 }

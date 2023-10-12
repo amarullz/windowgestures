@@ -17,13 +17,16 @@
  */
 
 .wgs-indicator-minimize {
-    border-radius: 10px;
-    border: 1px solid #222;
+    border-radius: 12px;
+    border: 1px solid rgba(80, 80, 80, .7);
     background-color: rgba(80, 80, 80, .5);
 }
 
 .wgs-indicator-close {
     border-radius: 10px;
-    border: 1px solid #600;
     background-color: rgba(200, 0, 0, .5);
+}
+
+.wgs-indicator-showdesktop {
+    background-color: rgba(255, 255, 255, .2);
 }
