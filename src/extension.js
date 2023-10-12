@@ -384,7 +384,13 @@ class Manager {
 
     // Move to Workspace
     _moveWindowWorkspace(moveRight) {
-        if (this._targetWindow == null) {
+        if ((this._targetWindow == null) ||
+            !Meta.prefs_get_dynamic_workspaces()) {
+            return;
+        }
+        let wsid = this._targetWindow.get_workspace().index();
+        if (wsid == 0 && !moveRight) {
+            this._insertWorkspace(0, this._targetWindow)
             return;
         }
         let tw = this._targetWindow.get_workspace()
@@ -392,6 +398,36 @@ class Manager {
                 Meta.MotionDirection.LEFT);
         this._targetWindow.change_workspace(tw);
         this._targetWindow.activate(global.get_current_time());
+    }
+
+    // Insert new workspace
+    _insertWorkspace(pos, chkwin) {
+        let wm = global.workspace_manager;
+        if (!Meta.prefs_get_dynamic_workspaces()) {
+            return false;
+        }
+        wm.append_new_workspace(false, global.get_current_time());
+        let windows = global.get_window_actors().map(a => a.meta_window);
+        windows.forEach(window => {
+            if (chkwin && chkwin == window)
+                return;
+            if (window.get_transient_for() != null)
+                return;
+            if (window.is_override_redirect())
+                return;
+            if (window.on_all_workspaces)
+                return;
+            let index = window.get_workspace().index();
+            if (index < pos)
+                return;
+            window.change_workspace_by_index(index + 1, true);
+        });
+        wm.get_workspace_by_index(pos + 1).activate(global.get_current_time());
+        if (chkwin) {
+            chkwin.change_workspace_by_index(pos, true);
+            this._targetWindow.activate(global.get_current_time());
+        }
+        return 0;
     }
 
     // Have Left Workspace
@@ -894,11 +930,11 @@ class Manager {
                         }
                         else if (this._movePos.x > threshold) {
                             if (!this._getHorizontalSwipeMode()) {
-                                if (this._workspaceHavePrev()) {
-                                    this._edgeAction |=
-                                        WindowEdgeAction.GESTURE_RIGHT;
-                                    this._edgeGestured = true;
-                                }
+                                // if (this._workspaceHavePrev()) {
+                                this._edgeAction |=
+                                    WindowEdgeAction.GESTURE_RIGHT;
+                                this._edgeGestured = true;
+                                // }
                             }
                             else {
                                 this._edgeAction = WindowEdgeAction.NONE;
