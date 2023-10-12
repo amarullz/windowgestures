@@ -20,7 +20,7 @@ import Clutter from 'gi://Clutter';
 import Meta from 'gi://Meta';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
-import GObject from 'gi://GObject';
+//  import GObject from 'gi://GObject';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -336,6 +336,18 @@ class Manager {
             )
             , this._monitorId
         );
+    }
+
+    // Get Alt Tabs List
+    _getWindowTabList() {
+        let wm = global.workspace_manager;
+        let workspace = wm.get_active_workspace();
+        let windows = global.display.get_tab_list(
+            Meta.TabList.NORMAL_ALL, workspace
+        );
+        return windows.map(w => {
+            return w.is_attached_dialog() ? w.get_transient_for() : w;
+        }).filter((w, i, a) => !w.skip_taskbar && a.indexOf(w) === i);
     }
 
     // Hide Preview
@@ -1593,29 +1605,130 @@ class Manager {
                 // Ignore on overview
                 return;
             }
-            if (!state || progress < 1.0) {
-                // Ignore if non end
-                return;
-            }
-            // Next/Prev Window
-            let gestureValue = (id == 5) ? 1 : -1;
-            let focusWindow = global.display.get_focus_window();
-            if (focusWindow) {
-                let listWin = global.display.list_all_windows();
-                let indexAct = listWin.indexOf(focusWindow);
-                if (indexAct > -1) {
-                    let nextWin = indexAct + gestureValue;
-                    if (nextWin < 0) {
-                        nextWin = listWin.length - 1;
+
+            let prv = (id == 6);
+            let wid = prv ? "switchwin_prev" : "switchwin_next";
+            let ui = this._actionWidgets[wid];
+
+            // Init indicator
+            if (!ui) {
+                ui = -1;
+                let wins = this._getWindowTabList();
+                if (wins.length > 1) {
+                    ui = { from: wins[0] };
+                    if (prv) {
+                        ui.into = wins[wins.length - 1];
                     }
-                    else if (nextWin >= listWin.length) {
-                        nextWin = 0;
+                    else {
+                        ui.into = wins[1];
                     }
-                    listWin[nextWin].activate(
-                        global.get_current_time()
-                    );
+                    ui.lstate = 0;
+                    ui.from_actor = ui.from.get_compositor_private();
+                    ui.into_actor = ui.into.get_compositor_private();
+                    ui.from_actor.set_pivot_point(0.5, 1);
+                    ui.into_actor.set_pivot_point(0.5, 1);
                 }
+                this._actionWidgets[wid] = ui;
             }
+            if (ui && ui != -1) {
+                if (!state) {
+                    ui.from_actor.opacity = 255 - Math.round(80 * progress);
+                    ui.from_actor.scale_y =
+                        ui.from_actor.scale_x = 1.0 - (0.05 * progress);
+                    ui.into_actor.scale_y =
+                        ui.into_actor.scale_x = 1.0 + (0.05 * progress);
+                    if (progress > 0.8) {
+                        if (!ui.lstate) {
+                            ui.into.raise();
+                            ui.lstate = 1;
+                        }
+                    }
+                    else if (ui.lstate) {
+                        ui.from.raise();
+                        ui.lstate = 0;
+                    }
+                }
+                else {
+                    if ((progress > 0.8) || ui.lstate) {
+                        ui.into.activate(
+                            global.get_current_time()
+                        );
+                    }
+                    ui.nclose = 0;
+                    // Ease Restore
+                    ui.from_actor.ease({
+                        duration: Math.round(200 * progress),
+                        mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                        opacity: 255,
+                        scale_x: 1,
+                        scale_y: 1,
+                        onStopped: () => {
+                            ui.from_actor.set_pivot_point(0, 0);
+                            ui.from_actor = null;
+                            ui.from = null;
+                            if (++ui.nclose == 2) {
+                                ui = null;
+                            }
+                        }
+                    });
+                    ui.into_actor.ease({
+                        duration: Math.round(200 * progress),
+                        mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                        opacity: 255,
+                        scale_x: 1,
+                        scale_y: 1,
+                        onStopped: () => {
+                            ui.into_actor.set_pivot_point(0, 0);
+                            ui.into_actor = null;
+                            ui.into = null;
+                            if (++ui.nclose == 2) {
+                                ui = null;
+                            }
+                        }
+                    });
+                    this._actionWidgets[wid] = null;
+                }
+            } else if (state) {
+                this._actionWidgets[wid] = ui = null;
+            }
+
+
+            // ALT TAB
+            // let wins = this._getWindowTabList();
+            // if (wins.length > 1) {
+            //     let wsel = null;
+            //     if (id == 5) {
+            //         wsel = wins[1];
+            //     }
+            //     else {
+            //         wsel = wins[wins.length - 1];
+            //     }
+            //     if (wsel) {
+            //         wsel.activate(
+            //             global.get_current_time()
+            //         );
+            //     }
+            // }
+
+            // Next/Prev Window
+            // let gestureValue = (id == 5) ? 1 : -1;
+            // let focusWindow = global.display.get_focus_window();
+            // if (focusWindow) {
+            //     let listWin = global.display.list_all_windows();
+            //     let indexAct = listWin.indexOf(focusWindow);
+            //     if (indexAct > -1) {
+            //         let nextWin = indexAct + gestureValue;
+            //         if (nextWin < 0) {
+            //             nextWin = listWin.length - 1;
+            //         }
+            //         else if (nextWin >= listWin.length) {
+            //             nextWin = 0;
+            //         }
+            //         listWin[nextWin].activate(
+            //             global.get_current_time()
+            //         );
+            //     }
+            // }
         }
         else if (id == 7) {
             if (!state || progress < 1.0) {
