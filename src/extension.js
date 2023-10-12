@@ -1356,7 +1356,7 @@ class Manager {
                     ui = activeWin.get_compositor_private();
                     this._actionWidgets.minimize = ui;
                     if (ui) {
-                        ui.set_pivot_point(0.5, 1.5);
+                        ui.set_pivot_point(0.5, 1);
                     }
                 }
                 else {
@@ -1367,10 +1367,10 @@ class Manager {
             // Execute Progress
             if (ui && ui != -1) {
                 if (!state) {
-                    ui.set_pivot_point(0.5, 1.5);
-                    ui.opacity = 255 - Math.round(64 * progress);
-                    ui.scale_x = 1.0 - (0.5 * progress);
-                    ui.scale_y = 1.0 - (0.5 * progress);
+                    ui.set_pivot_point(0.5, 1);
+                    ui.opacity = 255 - Math.round(100 * progress);
+                    ui.scale_x = 1.0 - (0.2 * progress);
+                    ui.scale_y = 1.0 - (0.2 * progress);
                 }
                 else {
                     // Action is executed
@@ -1459,9 +1459,9 @@ class Manager {
             if (ui && ui != -1) {
                 if (!state) {
                     ui.set_pivot_point(0.5, 0.5);
-                    ui.opacity = 255 - Math.round(127 * progress);
-                    ui.scale_x = 1.0 - (progress * 0.25);
-                    ui.scale_y = 1.0 - (progress * 0.25);
+                    ui.opacity = 255 - Math.round(80 * progress);
+                    ui.scale_x = 1.0 - (progress * 0.08);
+                    ui.scale_y = 1.0 - (progress * 0.08);
                     ui._layer.opacity = Math.round(255 * progress);
                 }
                 else {
@@ -1491,9 +1491,13 @@ class Manager {
                                     duration: 800,
                                     opacity: 0
                                 });
-                                me._sendKeyPress([
-                                    Clutter.KEY_Alt_L, Clutter.KEY_F4
-                                ]);
+                                // me._sendKeyPress([
+                                //     Clutter.KEY_Alt_L, Clutter.KEY_F4
+                                // ]);
+                                activeWin.delete(
+                                    global.get_current_time()
+                                );
+                                activeWin = null;
                             }
                             ui = null;
                             me = null;
