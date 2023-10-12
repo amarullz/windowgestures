@@ -1297,7 +1297,7 @@ class Manager {
                     ui = activeWin.get_compositor_private();
                     this._actionWidgets.minimize = ui;
                     if (ui) {
-                        ui.set_pivot_point(0.5, 1);
+                        ui.set_pivot_point(0.5, 0.8);
                     }
                 }
                 else {
@@ -1308,6 +1308,7 @@ class Manager {
             // Execute Progress
             if (ui && ui != -1) {
                 if (!state) {
+                    ui.set_pivot_point(0.5, 0.8);
                     ui.opacity = 255 - Math.round(127 * progress);
                     ui.scale_x = 1.0 - (0.5 * progress);
                     ui.scale_y = 1.0 - (0.5 * progress);
@@ -1375,6 +1376,12 @@ class Manager {
                     this._actionWidgets.close = ui;
                     if (ui) {
                         ui.set_pivot_point(0.5, 0.5);
+
+                        let wrect = activeWin.get_frame_rect();
+                        ui._layer = this._createUi(
+                            'wgs-indicator-close',
+                            wrect.x, wrect.y, wrect.width, wrect.height
+                        );
                     }
                 }
                 else {
@@ -1385,9 +1392,11 @@ class Manager {
             // Execute Progress
             if (ui && ui != -1) {
                 if (!state) {
+                    ui.set_pivot_point(0.5, 0.5);
                     ui.opacity = 255 - Math.round(160 * progress);
-                    ui.scale_x = 1.0 - (progress * 0.25);
-                    ui.scale_y = 1.0 - (progress * 0.25);
+                    ui._layer.scale_x = ui.scale_x = 1.0 - (progress * 0.25);
+                    ui._layer.scale_y = ui.scale_y = 1.0 - (progress * 0.25);
+                    ui._layer.opacity = Math.round(255 * progress);
                 }
                 else {
                     activeWin = null;
@@ -1398,6 +1407,9 @@ class Manager {
                     }
 
                     let me = this;
+
+                    ui._layer.release();
+                    ui._layer = null;
                     ui.ease({
                         duration: Math.round(250 * progress),
                         mode: Clutter.AnimationMode.EASE_OUT_QUAD,
@@ -1459,6 +1471,7 @@ class Manager {
             if (ui && ui != -1) {
                 if (!state) {
                     ui.forEach((aui) => {
+                        aui.set_pivot_point(0.5, 0.5);
                         aui.opacity = 255 - Math.round(100 * progress);
                         aui.scale_x = 1.0 - (progress * 0.4);
                         aui.scale_y = 1.0 - (progress * 0.4);
