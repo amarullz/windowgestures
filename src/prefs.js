@@ -84,21 +84,23 @@ export default class extends ExtensionPreferences {
             "Minimize Window",
             "Close Window",
             "Show Desktop",
-            "Alt+Tab Switch",
             "Next Window",
             "Previous Window",
-            "Overview (Super)",
-            "App (Super+A)",
-            "Quick Settings",
-            "Notification",
-            "Run (Alt+F2)",
             "Back",
             "Forward",
             "Volume Up",
             "Volume Down",
             "Mute",
             "Brightness Up",
-            "Brightness Down"
+            "Brightness Down",
+
+            "Alt+Tab Switch",
+            "Overview (Super)",
+            "App (Super+A)",
+            "Quick Settings",
+            "Notification",
+            "Run (Alt+F2)",
+
         ];
         const pinch = new Adw.PreferencesGroup({ title: "Pinch" });
         this._createSwitch(

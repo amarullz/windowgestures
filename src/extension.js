@@ -1346,9 +1346,11 @@ class Manager {
     _runAction(id, state, progress) {
         const _LCASE = 32;
         if (id == 1) {
+            //
             // MINIMIZE ACTION
-            if (this._isOnOverview()) { // Ignore on overview
-                return;
+            //
+            if (this._isOnOverview()) {
+                return; // Ignore on overview
             }
 
             let activeWin = null;
@@ -1427,9 +1429,11 @@ class Manager {
             }
         }
         else if (id == 2) {
+            //
             // CLOSE WINDOW ACTION
-            if (this._isOnOverview()) { // Ignore on overview
-                return;
+            //
+            if (this._isOnOverview()) {
+                return; // Ignore on overview
             }
 
             let activeWin = null;
@@ -1499,9 +1503,6 @@ class Manager {
                                     duration: 800,
                                     opacity: 0
                                 });
-                                // me._sendKeyPress([
-                                //     Clutter.KEY_Alt_L, Clutter.KEY_F4
-                                // ]);
                                 activeWin.delete(
                                     global.get_current_time()
                                 );
@@ -1519,7 +1520,9 @@ class Manager {
             }
         }
         else if (id == 3) {
+            //
             // SHOW DESKTOP
+            //
             if (this._isOnOverview()) { // Ignore on overview
                 return;
             }
@@ -1588,25 +1591,15 @@ class Manager {
             }
 
         }
-        else if (id == 4) {
+        else if ((id == 4) || (id == 5)) {
+            //
+            // NEXT & PREVIOUS WINDOW SWITCHING
+            //
             if (this._isOnOverview()) {
-                // Ignore on overview
-                return;
-            }
-            if (!state || progress < 1.0) {
-                // Ignore if non end
-                return;
-            }
-            // ALT+TAB
-            this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_Tab]);
-        }
-        else if ((id == 5) || (id == 6)) {
-            if (this._isOnOverview()) {
-                // Ignore on overview
-                return;
+                return; // Ignore on overview
             }
 
-            let prv = (id == 6);
+            let prv = (id == 5);
             let wid = prv ? "switchwin_prev" : "switchwin_next";
             let ui = this._actionWidgets[wid];
 
@@ -1691,96 +1684,20 @@ class Manager {
             } else if (state) {
                 this._actionWidgets[wid] = ui = null;
             }
-
-
-            // ALT TAB
-            // let wins = this._getWindowTabList();
-            // if (wins.length > 1) {
-            //     let wsel = null;
-            //     if (id == 5) {
-            //         wsel = wins[1];
-            //     }
-            //     else {
-            //         wsel = wins[wins.length - 1];
-            //     }
-            //     if (wsel) {
-            //         wsel.activate(
-            //             global.get_current_time()
-            //         );
-            //     }
-            // }
-
-            // Next/Prev Window
-            // let gestureValue = (id == 5) ? 1 : -1;
-            // let focusWindow = global.display.get_focus_window();
-            // if (focusWindow) {
-            //     let listWin = global.display.list_all_windows();
-            //     let indexAct = listWin.indexOf(focusWindow);
-            //     if (indexAct > -1) {
-            //         let nextWin = indexAct + gestureValue;
-            //         if (nextWin < 0) {
-            //             nextWin = listWin.length - 1;
-            //         }
-            //         else if (nextWin >= listWin.length) {
-            //             nextWin = 0;
-            //         }
-            //         listWin[nextWin].activate(
-            //             global.get_current_time()
-            //         );
-            //     }
-            // }
         }
-        else if (id == 7) {
-            if (!state || progress < 1.0) {
-                // Ignore if non end
-                return;
-            }
-            // Overview (Super)
-            this._sendKeyPress([Clutter.KEY_Super_L]);
-        }
-        else if (id == 8) {
-            if (!state || progress < 1.0) {
-                // Ignore if non end
-                return;
-            }
-            // Show Apps (Super+A)
-            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_A + _LCASE]);
-        }
-        else if (id == 9) {
-            if (!state || progress < 1.0) {
-                // Ignore if non end
-                return;
-            }
-            // Quick Settings (Super+S)
-            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_S + _LCASE]);
-        }
-        else if (id == 10) {
-            if (!state || progress < 1.0) {
-                // Ignore if non end
-                return;
-            }
-            // Notification (Super+V)
-            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_V + _LCASE]);
-        }
-        else if (id == 11) {
-            if (!state || progress < 1.0) {
-                // Ignore if non end
-                return;
-            }
-            // Run (Alt+F2)
-            this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F2]);
-        }
-        else if (id >= 12 && id <= 13) {
-            // CLOSE WINDOW ACTION
-            if (this._isOnOverview()) { // Ignore on overview
-                return;
+        else if (id >= 6 && id <= 7) {
+            //
+            // BACK / FORWARD
+            //
+            if (this._isOnOverview()) {
+                return; // Ignore on overview
             }
 
             const keyList = [
                 Clutter.KEY_Back,
                 Clutter.KEY_Forward
             ];
-            let kid = id - 12;
+            let kid = id - 6;
             let activeWin = null;
             let kidw = kid ? 'btnforward' : 'btnback';
             let ui = this._actionWidgets[kidw];
@@ -1853,7 +1770,10 @@ class Manager {
                 this._actionWidgets[kidw] = ui = null;
             }
         }
-        else if (id >= 14 && id <= 18) {
+        else if (id >= 8 && id <= 12) {
+            //
+            // MEDIA & BRIGHTNESS
+            //
             const keyList = [
                 Clutter.KEY_AudioRaiseVolume,
                 Clutter.KEY_AudioLowerVolume,
@@ -1863,8 +1783,8 @@ class Manager {
             ];
             let wid = 'keys_' + id;
             let cid = 'keysn_' + id;
-            let keyId = keyList[id - 14];
-            let isRepeat = (id != 16);
+            let keyId = keyList[id - 8];
+            let isRepeat = (id != 10);
 
             if (!state && (progress >= 1)) {
                 if (isRepeat) {
@@ -1902,6 +1822,69 @@ class Manager {
                 this._actionWidgets[cid] = 0;
             }
         }
+
+
+
+
+        //
+        // TODO: Change Below Actions
+        //
+        else if (id == 13) {
+            if (this._isOnOverview()) {
+                // Ignore on overview
+                return;
+            }
+            if (!state || progress < 1.0) {
+                // Ignore if non end
+                return;
+            }
+            // ALT+TAB
+            this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_Tab]);
+        }
+        else if (id == 14) {
+            if (!state || progress < 1.0) {
+                // Ignore if non end
+                return;
+            }
+            // Overview (Super)
+            this._sendKeyPress([Clutter.KEY_Super_L]);
+        }
+        else if (id == 15) {
+            if (!state || progress < 1.0) {
+                // Ignore if non end
+                return;
+            }
+            // Show Apps (Super+A)
+            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_A + _LCASE]);
+        }
+        else if (id == 16) {
+            if (!state || progress < 1.0) {
+                // Ignore if non end
+                return;
+            }
+            // Quick Settings (Super+S)
+            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_S + _LCASE]);
+        }
+        else if (id == 17) {
+            if (!state || progress < 1.0) {
+                // Ignore if non end
+                return;
+            }
+            // Notification (Super+V)
+            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_V + _LCASE]);
+        }
+        else if (id == 18) {
+            if (!state || progress < 1.0) {
+                // Ignore if non end
+                return;
+            }
+            // Run (Alt+F2)
+            this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F2]);
+        }
+
+        //
+        // End Of Actions
+        //
     }
 }
 
