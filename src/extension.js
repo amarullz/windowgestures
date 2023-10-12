@@ -59,70 +59,72 @@ const WindowClassBlacklist = [
     "gjs"
 ];
 
-// Indicator All
-class WGSArrowClass extends St.Widget {
-    constructor() {
-        super({ style_class: 'wgs-widget-indicator' });
-        this._arrow_icon = new St.Icon({
-            icon_name: 'go-previous-symbolic',
-            style_class: 'wgs-widget-indicator-icon'
-        });
-        this.set_clip_to_allocation(true);
-        this.add_child(this._arrow_icon);
-        this.set_size(
-            64, 64
-        );
-        this.set_pivot_point(0.5, 0.5);
-    }
-
-    viewShow() {
-        this.opacity = 0;
-        this.scale_x = 0;
-        this.scale_y = 0;
-        this.show();
-        this.ease({
-            opacity: 255,
-            scale_x: 1,
-            scale_y: 1,
-            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-            duration: 500
-        });
-    }
-
-    viewHide() {
-        this.ease({
-            opacity: 0,
-            scale_x: 0,
-            scale_y: 0,
-            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-            duration: 500,
-            onStopped: () => {
-                this.hide();
-                this.opacity = 0;
-                this.scale_x = 0;
-                this.scale_y = 0;
-            }
-        });
-    }
-}
 
 // Manager Class
 class Manager {
-    // Init Arrow
-    _initArrow() {
-        const WGSArrow = GObject.registerClass(WGSArrowClass);
-        this._myArrow = new WGSArrow();
-        this._myArrow.hide();
-        Main.layoutManager.uiGroup.add_child(this._myArrow);
-        this._myArrow.set_position(
-            200, 200
-        );
-    }
-
-    // Clear Arrow
-    _destroyArrow() {
-        this._myArrow.destroy();
-        this._myArrow = null;
+    // Create UI Indicator
+    _createUi(ui_class, x, y, w, h, icon) {
+        let ui = new St.Widget({ style_class: ui_class });
+        ui.set_clip_to_allocation(true);
+        ui._icon = null;
+        if (icon) {
+            ui._icon = new St.Icon({
+                icon_name: icon,
+                style_class: 'wgs-widget-indicator-icon'
+            });
+            ui.add_child(this._arrow_icon);
+        }
+        ui.set_position(x, y);
+        ui.set_size(w, h);
+        ui.set_pivot_point(0.5, 0.5);
+        ui.viewShow = (prop, duration) => {
+            ui.show();
+            prop.mode = Clutter.AnimationMode.EASE_OUT_QUAD;
+            prop.duration = duration;
+            ui.ease(prop);
+        };
+        ui.viewHide = (prop) => {
+            prop.mode = Clutter.AnimationMode.EASE_OUT_QUAD;
+            prop.duration = duration;
+            prop.onStopped = () => {
+                ui.hide();
+            };
+            ui.ease(prop);
+        };
+        ui.aniRelease = (progress) => {
+            if (!progress) {
+                progress = 1.0;
+            }
+            if (progress > 0.2) {
+                ui.ease({
+                    opacity: 0,
+                    scale_x: 0.5,
+                    scale_y: 0.5,
+                    duration: Math.round(250 * progress),
+                    mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                    onStopped: () => {
+                        ui.release();
+                    }
+                });
+            }
+            else {
+                ui.release();
+            }
+        };
+        ui.release = () => {
+            // Cleanup
+            ui.hide();
+            Main.layoutManager.uiGroup.remove_child(ui);
+            if (ui._icon) {
+                ui.remove_child(ui._icon);
+                ui._icon.destroy();
+                ui._icon = null;
+            }
+            ui.destroy();
+            ui = null;
+        };
+        Main.layoutManager.uiGroup.add_child(ui);
+        return ui;
     }
 
     // Init Extension
@@ -151,8 +153,8 @@ class Manager {
         // init 3 or 4 fingers config support
         this._initFingerCountFlip();
 
-        // Init arrow
-        this._initArrow();
+        // action widget holder
+        this._actionWidgets = {};
     }
 
     // Cleanup Extension
@@ -170,9 +172,6 @@ class Manager {
         // Cleanup all variables
         this._clearVars();
         this._settings = null;
-
-        // Destroy Arrow
-        this._destroyArrow();
     }
 
     // Init 3 or 4 finger count switch mode
@@ -433,12 +432,12 @@ class Manager {
         // Pinch
         this._pinch = {
             begin: false,
-            canceled: false,
-            isrepeat: false,
             fingers: 0,
+
             action: 0,
-            interval: 0,
-            interval_wait: 0
+            progress: 0,
+            action_id: 0,
+            action_cmp: 0
         };
 
         // Clear window tile preview
@@ -1142,136 +1141,18 @@ class Manager {
         return Clutter.EVENT_STOP;
     }
 
-    // Run Action
-    _pinchAction(id) {
-        const _LCASE = 32;
-        if (id == 1) {
-            if (this._isOnOverview()) {
-                // Ignore on overview
-                return;
-            }
-            // Minimize
-            let activeWin = global.display.get_focus_window();
-            if (activeWin) {
-                if (activeWin.can_minimize()) {
-                    activeWin.minimize();
-                }
-            }
-        }
-        else if (id == 2) {
-            if (this._isOnOverview()) {
-                // Ignore on overview
-                return;
-            }
-            // Close Window (ALT+F4)
-            this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F4]);
-        }
-        else if (id == 3) {
-            if (this._isOnOverview()) {
-                // Ignore on overview
-                return;
-            }
-            // Show Desktop (Super+D)  Clutter.KEY_D
-            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_D + _LCASE]);
-        }
-        else if (id == 4) {
-            if (this._isOnOverview()) {
-                // Ignore on overview
-                return;
-            }
-            // ALT+TAB
-            this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_Tab]);
-        }
-        else if ((id == 5) || (id == 6)) {
-            if (this._isOnOverview()) {
-                // Ignore on overview
-                return;
-            }
-            // Next/Prev Window
-            let gestureValue = (id == 5) ? 1 : -1;
-            let focusWindow = global.display.get_focus_window();
-            if (focusWindow) {
-                let listWin = global.display.list_all_windows();
-                let indexAct = listWin.indexOf(focusWindow);
-                if (indexAct > -1) {
-                    let nextWin = indexAct + gestureValue;
-                    if (nextWin < 0) {
-                        nextWin = listWin.length - 1;
-                    }
-                    else if (nextWin >= listWin.length) {
-                        nextWin = 0;
-                    }
-                    listWin[nextWin].activate(
-                        global.get_current_time()
-                    );
-                }
-            }
-        }
-        else if (id == 7) {
-            // Overview (Super)
-            this._sendKeyPress([Clutter.KEY_Super_L]);
-        }
-        else if (id == 8) {
-            // Show Apps (Super+A)
-            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_A + _LCASE]);
-        }
-        else if (id == 9) {
-            // Quick Settings (Super+S)
-            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_S + _LCASE]);
-        }
-        else if (id == 10) {
-            // Notification (Super+V)
-            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_V + _LCASE]);
-        }
-        else if (id == 11) {
-            // Run (Alt+F2)
-            this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F2]);
-        }
-        else if (id == 12) {
-            // Move Window (Alt+F7)
-            this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F7]);
-        }
-        else if (id == 13) {
-            // Resize (Alt+F8)
-            this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F8]);
-        }
-        else if (id >= 14 && id <= 18) {
-            let aid = id - 14;
-            const audiokeys = [
-                Clutter.KEY_AudioRaiseVolume,
-                Clutter.KEY_AudioLowerVolume,
-                Clutter.KEY_AudioMute,
-                Clutter.KEY_MonBrightnessUp,
-                Clutter.KEY_MonBrightnessDown,
-            ];
-            // Resize (Alt+F8)
-            this._sendKeyPress([audiokeys[aid]]);
-        }
-    }
-
-    _isRepeatAction(id) {
-        switch (id) {
-            case 14:
-            case 15:
-            case 17:
-            case 18:
-                return true;
-        }
-        return false;
-    }
-
     // Get Current Action Id
     _pinchGetCurrentActionId() {
-        if (!this._pinch.canceled && this._pinch.begin &&
-            this._pinch.action != 0 && this._pinch.fingers >= 3 &&
-            this._pinch.fingers <= 4) {
-            try {
-                let cfg_name = "pinch" + this._pinch.fingers + "-" +
-                    ((this._pinch.action == 1) ? "in" : "out");
-                let action_id = this._settings.get_int(cfg_name);
-                return action_id;
-            } catch (err) {
+        if (this._pinch.begin && this._pinch.action != 0) {
+            if (this._pinch.action != this._pinch.action_cmp) {
+                try {
+                    let cfg_name = "pinch" + this._pinch.fingers + "-" +
+                        ((this._pinch.action == 1) ? "in" : "out");
+                    this._pinch.action_id = this._settings.get_int(cfg_name);
+                    this._pinch.action_cmp = this._pinch.action;
+                } catch (e) { }
             }
+            return this._pinch.action_id;
         }
         return 0;
     }
@@ -1281,57 +1162,85 @@ class Manager {
         if (this._pinch.begin) {
             let pIn = (this._getPinchInScale() / 100.0);
             let pOut = (this._getPinchOutScale() / 100.0);
-            if (this._pinch.action == 0) {
-                if (pinch_scale <= pIn) {
-                    this._pinch.action = 1;
+
+            // Get prediction action & current progress position
+            if (pinch_scale < 1.0) {
+                if (pinch_scale < pIn) {
+                    pinch_scale = pIn;
                 }
-                else if (pinch_scale >= pOut) {
-                    this._pinch.action = 2;
+                this._pinch.action = 1;
+                this._pinch.progress = (1.0 - pinch_scale) / (1.0 - pIn);
+            }
+            else if (pinch_scale > 1.0) {
+                if (pinch_scale > pOut) {
+                    pinch_scale = pOut;
                 }
+                this._pinch.action = 2;
+                this._pinch.progress = (pinch_scale - 1.0) / (pOut - 1.0);
             }
-            else if (this._pinch.action == 1) {
-                // Pinch-In
-                this._pinch.canceled = (pinch_scale <= pIn) ? false : true;
+            else {
+                this.pinch.action = 0;
+                this._pinch.progress = 0;
             }
-            else if (this._pinch.action == 2) {
-                // Pinch-Out
-                this._pinch.canceled = (pinch_scale >= pOut) ? false : true;
+
+            if (this._pinch.action && this._pinch.action_cmp &&
+                (this._pinch.action != this._pinch.action_cmp)) {
+                // Send Cancel State
+                this._runAction(this._pinch.action_cmp, 1, 0);
             }
-            if (this._pinch.action != 0) {
-                let action_id = this._pinchGetCurrentActionId();
-                // Repeatable Keys
-                if (this._isRepeatAction(action_id)) {
-                    if (this._pinch.interval == 0) {
-                        this._pinch.isrepeat = true;
-                        this._pinchAction(action_id);
-                        let me = this;
-                        this._pinch.interval = this.setInterval(
-                            function () {
-                                if (me._pinch.interval_wait >= 5) {
-                                    me._pinchAction(action_id);
-                                } else {
-                                    me._pinch.interval_wait++;
-                                }
-                            }, 100
-                        );
-                    }
-                }
+
+            let action_id = this._pinchGetCurrentActionId();
+            if (action_id) {
+                this._runAction(action_id, 0, this._pinch.progress);
             }
+
+            // if (this._pinch.action == 0) {
+            //     if (pinch_scale <= pIn) {
+            //         this._pinch.action = 1;
+            //     }
+            //     else if (pinch_scale >= pOut) {
+            //         this._pinch.action = 2;
+            //     }
+            // }
+            // else if (this._pinch.action == 1) {
+            //     // Pinch-In
+            //     this._pinch.canceled = (pinch_scale <= pIn) ? false : true;
+            // }
+            // else if (this._pinch.action == 2) {
+            //     // Pinch-Out
+            //     this._pinch.canceled = (pinch_scale >= pOut) ? false : true;
+            // }
+            // if (this._pinch.action != 0) {
+            //     let action_id = this._pinchGetCurrentActionId(0);
+            //     // Repeatable Keys
+            //     if (this._isRepeatAction(action_id)) {
+            //         if (this._pinch.interval == 0) {
+            //             this._pinch.isrepeat = true;
+            //             this._runAction(action_id);
+            //             let me = this;
+            //             this._pinch.interval = this.setInterval(
+            //                 function () {
+            //                     if (me._pinch.interval_wait >= 5) {
+            //                         me._runAction(action_id);
+            //                     } else {
+            //                         me._pinch.interval_wait++;
+            //                     }
+            //                 }, 100
+            //             );
+            //         }
+            //     }
+            // }
         }
         return Clutter.EVENT_STOP;
     }
 
     // End Pinch
     _pinchEnd() {
-        this._myArrow.viewHide();
-        this.clearInterval(this._pinch.interval);
-        this._pinch.interval = 0;
-
         let action_id = this._pinchGetCurrentActionId();
-        if (action_id > 0 && !this._pinch.isrepeat) {
-            // Execute action
-            this._pinchAction(action_id);
+        if (action_id) {
+            this._runAction(action_id, 1, this._pinch.progress);
         }
+
         this._clearVars();
         return Clutter.EVENT_STOP;
     }
@@ -1352,9 +1261,9 @@ class Manager {
             case Clutter.TouchpadGesturePhase.BEGIN:
                 this._pinch.fingers = numfingers;
                 this._pinch.begin = true;
-                this._pinch.canceled = false;
                 this._pinch.action = 0;
-                this._myArrow.viewShow();
+                this._pinch.progress = 0;
+                this._pinch.action_cmp = 0;
                 return Clutter.EVENT_STOP;
 
             case Clutter.TouchpadGesturePhase.UPDATE:
@@ -1404,6 +1313,247 @@ class Manager {
         return Clutter.EVENT_STOP;
     }
 
+    // Run Action
+    _runAction(id, state, progress) {
+        const _LCASE = 32;
+        if (id == 1) {
+            // MINIMIZE ACTION
+            if (this._isOnOverview()) { // Ignore on overview
+                return;
+            }
+
+            let activeWin = null;
+            let ui = this._actionWidgets.minimize;
+
+            // Init indicator
+            if (!ui) {
+                activeWin = global.display.get_focus_window();
+                if (activeWin && activeWin.can_minimize()) {
+                    let wrect = activeWin.get_frame_rect();
+                    ui = this._createUi(
+                        'wgs-indicator-minimize',
+                        wrect.x + wrect.width / 4, wrect.y + wrect.height / 4,
+                        wrect.width / 2, wrect.height / 2, null
+                    );
+                    ui.opacity = 0;
+                    ui.scale_x = 2;
+                    ui.scale_y = 2;
+                    ui.show();
+                    this._actionWidgets.minimize = ui;
+                }
+                else {
+                    this._actionWidgets.minimize = ui = -1;
+                }
+            }
+
+            // Execute Progress
+            if (ui && ui != -1) {
+                if (!state) {
+                    ui.opacity = Math.round(255 * progress);
+                    ui.scale_x = 2.0 - progress;
+                    ui.scale_y = 2.0 - progress;
+                }
+                else {
+                    // Remove Indicator
+                    ui.aniRelease(progress);
+                    this._actionWidgets.minimize = ui = null;
+
+                    // Action is executed
+                    if (progress >= 1.0) {
+                        activeWin = global.display.get_focus_window();
+                        if (activeWin) {
+                            if (activeWin.can_minimize()) {
+                                activeWin.minimize();
+                            }
+                        }
+                    }
+                }
+            } else if (state) {
+                this._actionWidgets.minimize = ui = null;
+            }
+        }
+        else if (id == 2) {
+            // CLOSE WINDOW ACTION
+            if (this._isOnOverview()) { // Ignore on overview
+                return;
+            }
+
+            let activeWin = null;
+            let ui = this._actionWidgets.close;
+
+            // Init indicator
+            if (!ui) {
+                activeWin = global.display.get_focus_window();
+                if (activeWin) {
+                    let wrect = activeWin.get_frame_rect();
+                    ui = this._createUi(
+                        'wgs-indicator-close',
+                        wrect.x, wrect.y, wrect.width, wrect.height, null
+                    );
+                    ui.opacity = 0;
+                    ui.scale_x = 0.5;
+                    ui.scale_y = 0.5;
+                    ui.show();
+                    this._actionWidgets.close = ui;
+                }
+                else {
+                    this._actionWidgets.close = ui = -1;
+                }
+            }
+
+            // Execute Progress
+            if (ui && ui != -1) {
+                if (!state) {
+                    ui.opacity = Math.round(255 * progress);
+                    ui.scale_x = 0.5 + (progress * 0.5);
+                    ui.scale_y = 0.5 + (progress * 0.5);
+                }
+                else {
+                    // Remove Indicator
+                    ui.aniRelease(progress);
+                    this._actionWidgets.close = ui = null;
+
+                    // Action is executed
+                    if (progress >= 1.0) {
+                        activeWin = global.display.get_focus_window();
+                        if (activeWin) {
+                            /* Send ALT+F4 */
+                            this._sendKeyPress([
+                                Clutter.KEY_Alt_L, Clutter.KEY_F4
+                            ]);
+                        }
+                    }
+                }
+            } else if (state) {
+                this._actionWidgets.close = ui = null;
+            }
+        }
+        else if (id == 3) {
+            if (this._isOnOverview()) {
+                // Ignore on overview
+                return;
+            }
+            if (!state || progress < 1.0) {
+                // Ignore if non end
+                return;
+            }
+            // Show Desktop (Super+D)  Clutter.KEY_D
+            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_D + _LCASE]);
+        }
+        else if (id == 4) {
+            if (this._isOnOverview()) {
+                // Ignore on overview
+                return;
+            }
+            if (!state || progress < 1.0) {
+                // Ignore if non end
+                return;
+            }
+            // ALT+TAB
+            this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_Tab]);
+        }
+        else if ((id == 5) || (id == 6)) {
+            if (this._isOnOverview()) {
+                // Ignore on overview
+                return;
+            }
+            if (!state || progress < 1.0) {
+                // Ignore if non end
+                return;
+            }
+            // Next/Prev Window
+            let gestureValue = (id == 5) ? 1 : -1;
+            let focusWindow = global.display.get_focus_window();
+            if (focusWindow) {
+                let listWin = global.display.list_all_windows();
+                let indexAct = listWin.indexOf(focusWindow);
+                if (indexAct > -1) {
+                    let nextWin = indexAct + gestureValue;
+                    if (nextWin < 0) {
+                        nextWin = listWin.length - 1;
+                    }
+                    else if (nextWin >= listWin.length) {
+                        nextWin = 0;
+                    }
+                    listWin[nextWin].activate(
+                        global.get_current_time()
+                    );
+                }
+            }
+        }
+        else if (id == 7) {
+            if (!state || progress < 1.0) {
+                // Ignore if non end
+                return;
+            }
+            // Overview (Super)
+            this._sendKeyPress([Clutter.KEY_Super_L]);
+        }
+        else if (id == 8) {
+            if (!state || progress < 1.0) {
+                // Ignore if non end
+                return;
+            }
+            // Show Apps (Super+A)
+            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_A + _LCASE]);
+        }
+        else if (id == 9) {
+            if (!state || progress < 1.0) {
+                // Ignore if non end
+                return;
+            }
+            // Quick Settings (Super+S)
+            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_S + _LCASE]);
+        }
+        else if (id == 10) {
+            if (!state || progress < 1.0) {
+                // Ignore if non end
+                return;
+            }
+            // Notification (Super+V)
+            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_V + _LCASE]);
+        }
+        else if (id == 11) {
+            if (!state || progress < 1.0) {
+                // Ignore if non end
+                return;
+            }
+            // Run (Alt+F2)
+            this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F2]);
+        }
+        else if (id == 12) {
+            if (!state || progress < 1.0) {
+                // Ignore if non end
+                return;
+            }
+            // Move Window (Alt+F7)
+            this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F7]);
+        }
+        else if (id == 13) {
+            if (!state || progress < 1.0) {
+                // Ignore if non end
+                return;
+            }
+            // Resize (Alt+F8)
+            this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F8]);
+        }
+        else if (id >= 14 && id <= 18) {
+            if (!state || progress < 1.0) {
+                // Ignore if non end
+                return;
+            }
+            let aid = id - 14;
+            const audiokeys = [
+                Clutter.KEY_AudioRaiseVolume,
+                Clutter.KEY_AudioLowerVolume,
+                Clutter.KEY_AudioMute,
+                Clutter.KEY_MonBrightnessUp,
+                Clutter.KEY_MonBrightnessDown,
+            ];
+            // Resize (Alt+F8)
+            this._sendKeyPress([audiokeys[aid]]);
+        }
+    }
 }
 
 // Export Extension
