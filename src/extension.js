@@ -63,10 +63,11 @@ const WindowClassBlacklist = [
 // Manager Class
 class Manager {
     // Create UI Indicator
-    _createUi(ui_class, x, y, w, h, icon) {
+    _createUi(ui_class, x, y, w, h, icon, parent) {
         let ui = new St.Widget({ style_class: ui_class });
         ui.set_clip_to_allocation(true);
         ui._icon = null;
+        ui._parent = parent ? parent : Main.layoutManager.uiGroup;
         if (icon) {
             ui._icon = new St.Icon({
                 icon_name: icon,
@@ -114,7 +115,7 @@ class Manager {
         ui.release = () => {
             // Cleanup
             ui.hide();
-            Main.layoutManager.uiGroup.remove_child(ui);
+            ui._parent.remove_child(ui);
             if (ui._icon) {
                 ui.remove_child(ui._icon);
                 ui._icon.destroy();
@@ -123,7 +124,7 @@ class Manager {
             ui.destroy();
             ui = null;
         };
-        Main.layoutManager.uiGroup.add_child(ui);
+        ui._parent.add_child(ui);
         return ui;
     }
 
@@ -1293,11 +1294,14 @@ class Manager {
             // Init indicator
             if (!ui) {
                 activeWin = global.display.get_focus_window();
+                if (this._isWindowBlacklist(activeWin)) {
+                    activeWin = null;
+                }
                 if (activeWin && activeWin.can_minimize()) {
                     ui = activeWin.get_compositor_private();
                     this._actionWidgets.minimize = ui;
                     if (ui) {
-                        ui.set_pivot_point(0.5, 0.8);
+                        ui.set_pivot_point(0.5, 1.5);
                     }
                 }
                 else {
@@ -1308,7 +1312,7 @@ class Manager {
             // Execute Progress
             if (ui && ui != -1) {
                 if (!state) {
-                    ui.set_pivot_point(0.5, 0.8);
+                    ui.set_pivot_point(0.5, 1.5);
                     ui.opacity = 255 - Math.round(127 * progress);
                     ui.scale_x = 1.0 - (0.5 * progress);
                     ui.scale_y = 1.0 - (0.5 * progress);
@@ -1371,6 +1375,9 @@ class Manager {
             // Init indicator
             if (!ui) {
                 activeWin = global.display.get_focus_window();
+                if (this._isWindowBlacklist(activeWin)) {
+                    activeWin = null;
+                }
                 if (activeWin) {
                     ui = activeWin.get_compositor_private();
                     this._actionWidgets.close = ui;
@@ -1380,7 +1387,11 @@ class Manager {
                         let wrect = activeWin.get_frame_rect();
                         ui._layer = this._createUi(
                             'wgs-indicator-close',
-                            wrect.x, wrect.y, wrect.width, wrect.height
+                            0,
+                            0,
+                            wrect.width, wrect.height,
+                            null,
+                            ui.get_child_at_index(0)
                         );
                     }
                 }
@@ -1394,8 +1405,8 @@ class Manager {
                 if (!state) {
                     ui.set_pivot_point(0.5, 0.5);
                     ui.opacity = 255 - Math.round(160 * progress);
-                    ui._layer.scale_x = ui.scale_x = 1.0 - (progress * 0.25);
-                    ui._layer.scale_y = ui.scale_y = 1.0 - (progress * 0.25);
+                    ui.scale_x = 1.0 - (progress * 0.25);
+                    ui.scale_y = 1.0 - (progress * 0.25);
                     ui._layer.opacity = Math.round(255 * progress);
                 }
                 else {
@@ -1454,10 +1465,13 @@ class Manager {
                 if (monitorArea.length > 0) {
                     ui = [];
                     for (var i = 0; i < monitorArea.length; i++) {
-                        let aui = monitorArea[i].get_compositor_private();
-                        if (aui) {
-                            ui.push(aui);
-                            aui.set_pivot_point(0.5, 0.5);
+                        if (!this._isWindowBlacklist(monitorArea[i])) {
+                            let aui = monitorArea[i].get_compositor_private();
+
+                            if (aui) {
+                                ui.push(aui);
+                                aui.set_pivot_point(0.5, 0.5);
+                            }
                         }
                     }
                     this._actionWidgets.show_desktop = ui;
