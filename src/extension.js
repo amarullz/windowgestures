@@ -1707,12 +1707,6 @@ class Manager {
                     ui.into_actor.set_pivot_point(0.5, 1);
 
                     // Reorder for next (below 1s) calls
-                    if (prv) {
-                        wins.unshift(wins.pop());
-                    }
-                    else {
-                        wins.push(wins.shift());
-                    }
                     this._actionWidgets.cacheWinTabList = wins;
                 }
                 this._actionWidgets[wid] = ui;
@@ -1740,6 +1734,16 @@ class Manager {
                         ui.into.activate(
                             global.get_current_time()
                         );
+                        if (prv) {
+                            me._actionWidgets.cacheWinTabList.unshift(
+                                me._actionWidgets.cacheWinTabList.pop()
+                            );
+                        }
+                        else {
+                            me._actionWidgets.cacheWinTabList.push(
+                                me._actionWidgets.cacheWinTabList.shift()
+                            );
+                        }
                     }
                     ui.nclose = 0;
                     // Ease Restore
@@ -1774,6 +1778,7 @@ class Manager {
                         }
                     });
                     this._actionWidgets[wid] = null;
+
                     // Clear cache after timeout
                     this._actionWidgets.cacheWinTimeout = this.setTimeout(
                         function (me) {
