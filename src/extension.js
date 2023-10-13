@@ -1545,9 +1545,7 @@ class Manager {
                     }
 
                     let me = this;
-                    if (!activeWin) {
-                        ui._effect.release();
-                    }
+                    ui._effect.release();
                     ui.ease({
                         duration: Math.round(250 * progress),
                         mode: Clutter.AnimationMode.EASE_OUT_QUAD,
@@ -1557,7 +1555,6 @@ class Manager {
                         onStopped: () => {
                             ui.set_pivot_point(0, 0);
                             if (activeWin) {
-                                ui._effect.release();
                                 ui.hide();
                                 ui.opacity = 0;
                                 ui.ease({
