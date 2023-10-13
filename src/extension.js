@@ -20,7 +20,7 @@ import Clutter from 'gi://Clutter';
 import Meta from 'gi://Meta';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
-//  import GObject from 'gi://GObject';
+import GObject from 'gi://GObject';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -59,9 +59,160 @@ const WindowClassBlacklist = [
     "gjs"
 ];
 
+// Close Shader
+class WGSShader extends Clutter.ShaderEffect {
+    constructor(type) {
+        super();
+        if (type == 'close') {
+            // Red Close
+            this._script =
+                'vec4 color = texture2D( tex, cogl_tex_coord_in[0].st ); ' +
+                'color.r *= 1.0+progress; ' +
+                'color.g *= 1.0-(progress/2); ' +
+                'color.b *= 1.0-(progress/2); ' +
+                'cogl_color_out = color * cogl_color_in;';
+        }
+        else {
+            // Dim
+            this._script =
+                'vec4 color = texture2D( tex, cogl_tex_coord_in[0].st ); ' +
+                'color.rgb *= 1.0-progress; ' +
+                'cogl_color_out = color * cogl_color_in;';
+        }
+    }
+    setValue(v) {
+        this.set_uniform_value('progress', v);
+    }
+    vfunc_get_static_shader_source() {
+        return 'uniform sampler2D tex; ' +
+            'uniform float progress; ' +
+            'void main() { ' + this._script + ' }';
+    }
+    vfunc_paint_target(paint_node = null, paint_context = null) {
+        this.set_uniform_value('tex', 0);
+        if (paint_node && paint_context)
+            super.vfunc_paint_target(paint_node, paint_context);
+        else if (paint_node)
+            super.vfunc_paint_target(paint_node);
+        else
+            super.vfunc_paint_target();
+    }
+}
 
 // Manager Class
 class Manager {
+
+    // Init Extension
+    constructor(ext) {
+        // Get settings
+        this._settings = ext.getSettings();
+
+        // Gestures are hooked by WGS
+        this._hooked = false;
+
+        // Create virtual devices
+        const seat = Clutter.get_default_backend().get_default_seat();
+        this._virtualTouchpad = seat.create_virtual_device(
+            Clutter.InputDeviceType.POINTER_DEVICE
+        );
+        this._virtualKeyboard = seat.create_virtual_device(
+            Clutter.InputDeviceType.KEYBOARD_DEVICE
+        );
+
+        // Init variables - keep enable() clean
+        this._clearVars();
+
+        // Capture Touchpad Event
+        this._gestureCallbackID = global.stage.connect(
+            'captured-event::touchpad',
+            this._touchEvent.bind(this)
+        );
+
+        // init 3 or 4 fingers config support
+        this._initFingerCountFlip();
+
+        // action widget holder
+        this._actionWidgets = {};
+    }
+
+    // Cleanup Extension
+    destroy() {
+        // restore default GNOME 3 fingers gesture
+        this._restoreFingerCountFlip();
+
+        // Release Touchpad Event Capture
+        global.stage.disconnect(this._gestureCallbackID);
+
+        // Cleanup virtual devices
+        this._virtualTouchpad = null;
+        this._virtualKeyboard = null;
+
+        // Cleanup all variables
+        this._clearVars();
+        this._settings = null;
+        this._ShaderClass = null;
+    }
+
+    // Init 3 or 4 finger count switch mode
+    _initFingerCountFlip() {
+        // Move 3-4 Finger Gesture
+        /*
+         * Original Hook Logic From (swap-finger-gestures):
+         * https://github.com/icedman/swap-finger-gestures-3-4
+         * 
+         */
+        this._swipeMods = [
+            Main.overview._swipeTracker._touchpadGesture,
+            Main.wm._workspaceAnimation._swipeTracker._touchpadGesture,
+            Main.overview._overview._controls
+                ._workspacesDisplay._swipeTracker._touchpadGesture,
+            Main.overview._overview._controls
+                ._appDisplay._swipeTracker._touchpadGesture
+        ];
+        let me = this;
+        this._swipeMods.forEach((g) => {
+            g._newHandleEvent = (actor, event) => {
+                event._get_touchpad_gesture_finger_count =
+                    event.get_touchpad_gesture_finger_count;
+                event.get_touchpad_gesture_finger_count = () => {
+                    let real_count = event._get_touchpad_gesture_finger_count();
+                    if (me._hooked || (real_count == me._gestureNumFinger())) {
+                        return 0;
+                    }
+                    else if (real_count >= 3) {
+                        return 3;
+                    }
+                    return 0;
+                };
+                if (me._hooked) {
+                    return Clutter.EVENT_STOP;
+                }
+                return g._handleEvent(actor, event);
+            };
+            global.stage.disconnectObject(g);
+            global.stage.connectObject(
+                'captured-event::touchpad',
+                g._newHandleEvent.bind(g),
+                g
+            );
+        });
+    }
+
+    // Restore 3 or 4 finger count switch mode
+    _restoreFingerCountFlip() {
+        // Restore 3 finger gesture
+        this._swipeMods.forEach((g) => {
+            global.stage.disconnectObject(g);
+            global.stage.connectObject(
+                'captured-event::touchpad',
+                g._handleEvent.bind(g),
+                g
+            );
+        });
+        this._swipeMods = [];
+    }
+
+
     // Create UI Indicator
     _createUi(ui_class, x, y, w, h, icon, parent) {
         let ui = new St.Widget({ style_class: ui_class });
@@ -128,113 +279,30 @@ class Manager {
         return ui;
     }
 
-    // Init Extension
-    constructor(ext) {
-        // Get settings
-        this._settings = ext.getSettings();
-
-        // Gestures are hooked by WGS
-        this._hooked = false;
-
-        // Create virtual devices
-        const seat = Clutter.get_default_backend().get_default_seat();
-        this._virtualTouchpad = seat.create_virtual_device(
-            Clutter.InputDeviceType.POINTER_DEVICE
-        );
-        this._virtualKeyboard = seat.create_virtual_device(
-            Clutter.InputDeviceType.KEYBOARD_DEVICE
-        );
-
-        // Init variables - keep enable() clean
-        this._clearVars();
-
-        // Capture Touchpad Event
-        this._gestureCallbackID = global.stage.connect(
-            'captured-event::touchpad',
-            this._touchEvent.bind(this)
-        );
-
-        // init 3 or 4 fingers config support
-        this._initFingerCountFlip();
-
-        // action widget holder
-        this._actionWidgets = {};
-    }
-
-    // Cleanup Extension
-    destroy() {
-        // restore default GNOME 3 fingers gesture
-        this._restoreFingerCountFlip();
-
-        // Release Touchpad Event Capture
-        global.stage.disconnect(this._gestureCallbackID);
-
-        // Cleanup virtual devices
-        this._virtualTouchpad = null;
-        this._virtualKeyboard = null;
-
-        // Cleanup all variables
-        this._clearVars();
-        this._settings = null;
-    }
-
-    // Init 3 or 4 finger count switch mode
-    _initFingerCountFlip() {
-        // Move 3-4 Finger Gesture
-        /*
-         * Original Hook Logic From (swap-finger-gestures):
-         * https://github.com/icedman/swap-finger-gestures-3-4
-         * 
-         */
-        this._swipeMods = [
-            Main.overview._swipeTracker._touchpadGesture,
-            Main.wm._workspaceAnimation._swipeTracker._touchpadGesture,
-            Main.overview._overview._controls
-                ._workspacesDisplay._swipeTracker._touchpadGesture,
-            Main.overview._overview._controls
-                ._appDisplay._swipeTracker._touchpadGesture
-        ];
-        let me = this;
-        this._swipeMods.forEach((g) => {
-            g._newHandleEvent = (actor, event) => {
-                event._get_touchpad_gesture_finger_count =
-                    event.get_touchpad_gesture_finger_count;
-                event.get_touchpad_gesture_finger_count = () => {
-                    let real_count = event._get_touchpad_gesture_finger_count();
-                    if (me._hooked || (real_count == me._gestureNumFinger())) {
-                        return 0;
-                    }
-                    else if (real_count >= 3) {
-                        return 3;
-                    }
-                    return 0;
-                };
-                if (me._hooked) {
-                    return Clutter.EVENT_STOP;
-                }
-                return g._handleEvent(actor, event);
-            };
-            global.stage.disconnectObject(g);
-            global.stage.connectObject(
-                'captured-event::touchpad',
-                g._newHandleEvent.bind(g),
-                g
+    // Create Shader Effect
+    _createShader(type, actor, name) {
+        if (!this._ShaderClass) {
+            this._ShaderClass = new GObject.registerClass(
+                {
+                    GTypeName: 'WGSShader',
+                },
+                WGSShader
             );
-        });
-    }
-
-    // Restore 3 or 4 finger count switch mode
-    _restoreFingerCountFlip() {
-        // Restore 3 finger gesture
-        this._swipeMods.forEach((g) => {
-            global.stage.disconnectObject(g);
-            global.stage.connectObject(
-                'captured-event::touchpad',
-                g._handleEvent.bind(g),
-                g
-            );
-        });
-        this._swipeMods = [];
+        }
+        let effect = new this._ShaderClass(type);
+        if (actor) {
+            actor._effect = effect;
+            actor.add_effect_with_name(name, effect);
+        }
+        effect.release = () => {
+            if (actor) {
+                actor.remove_effect_by_name(name);
+                actor._effect = null;
+                actor = null;
+            }
+            effect = null;
+        };
+        return effect;
     }
 
     _isWindowBlacklist(win) {
@@ -1450,16 +1518,8 @@ class Manager {
                     this._actionWidgets.close = ui;
                     if (ui) {
                         ui.set_pivot_point(0.5, 0.5);
-
-                        let wrect = activeWin.get_frame_rect();
-                        ui._layer = this._createUi(
-                            'wgs-indicator-close',
-                            0,
-                            0,
-                            wrect.width, wrect.height,
-                            null,
-                            ui.get_child_at_index(0)
-                        );
+                        this._createShader('close', ui, 'closeindicator');
+                        ui._effect.setValue(0);
                     }
                 }
                 else {
@@ -1471,10 +1531,10 @@ class Manager {
             if (ui && ui != -1) {
                 if (!state) {
                     ui.set_pivot_point(0.5, 0.5);
-                    ui.opacity = 255 - Math.round(80 * progress);
+                    ui.opacity = 255 - Math.round(40 * progress);
                     ui.scale_x = 1.0 - (progress * 0.08);
                     ui.scale_y = 1.0 - (progress * 0.08);
-                    ui._layer.opacity = Math.round(255 * progress);
+                    ui._effect.setValue(progress * 0.6);
                 }
                 else {
                     activeWin = null;
@@ -1485,9 +1545,9 @@ class Manager {
                     }
 
                     let me = this;
-
-                    ui._layer.release();
-                    ui._layer = null;
+                    if (!activeWin) {
+                        ui._effect.release();
+                    }
                     ui.ease({
                         duration: Math.round(250 * progress),
                         mode: Clutter.AnimationMode.EASE_OUT_QUAD,
@@ -1497,6 +1557,7 @@ class Manager {
                         onStopped: () => {
                             ui.set_pivot_point(0, 0);
                             if (activeWin) {
+                                ui._effect.release();
                                 ui.hide();
                                 ui.opacity = 0;
                                 ui.ease({
