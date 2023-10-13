@@ -285,6 +285,10 @@ class Manager {
         return fx;
     }
 
+    _tick() {
+        return new Date().getTime();
+    }
+
     _isWindowBlacklist(win) {
         if (win) {
             if (WindowClassBlacklist.indexOf(win.get_wm_class()) == -1) {
@@ -571,7 +575,18 @@ class Manager {
         });
     }
 
+    setTimeout(func, delay, ...args) {
+        return GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
+            func(...args);
+            return GLib.SOURCE_REMOVE;
+        });
+    };
+
     clearInterval(id) {
+        GLib.source_remove(id);
+    }
+
+    clearTimeout(id) {
         GLib.source_remove(id);
     }
 
@@ -1524,7 +1539,6 @@ class Manager {
                         activeWin = global.display.get_focus_window();
                     }
 
-                    let me = this;
                     ui.fx?.release();
                     ui.ease({
                         duration: Math.round(250 * progress),
@@ -1547,7 +1561,6 @@ class Manager {
                                 activeWin = null;
                             }
                             ui = null;
-                            me = null;
                         }
                     });
 
@@ -1664,7 +1677,21 @@ class Manager {
             // Init indicator
             if (!ui) {
                 ui = -1;
-                let wins = this._getWindowTabList();
+                let wins = null;
+
+                // Cancel cache win timeout
+                if (this._actionWidgets.cacheWinTimeout) {
+                    this.clearTimeout(this._actionWidgets.cacheWinTimeout);
+                    this._actionWidgets.cacheWinTimeout = 0;
+                }
+                // Get cached window list
+                if (this._actionWidgets.cacheWinTabList) {
+                    wins = this._actionWidgets.cacheWinTabList;
+                }
+                if (!wins) {
+                    // No last cached
+                    wins = this._getWindowTabList();
+                }
                 if (wins.length > 1) {
                     ui = { from: wins[0] };
                     if (prv) {
@@ -1678,6 +1705,15 @@ class Manager {
                     ui.into_actor = ui.into.get_compositor_private();
                     ui.from_actor.set_pivot_point(0.5, 1);
                     ui.into_actor.set_pivot_point(0.5, 1);
+
+                    // Reorder for next (below 1s) calls
+                    if (prv) {
+                        wins.unshift(wins.pop());
+                    }
+                    else {
+                        wins.push(wins.shift());
+                    }
+                    this._actionWidgets.cacheWinTabList = wins;
                 }
                 this._actionWidgets[wid] = ui;
             }
@@ -1738,6 +1774,14 @@ class Manager {
                         }
                     });
                     this._actionWidgets[wid] = null;
+                    // Clear cache after timeout
+                    this._actionWidgets.cacheWinTimeout = this.setTimeout(
+                        function (me) {
+                            me._actionWidgets.cacheWinTabList = null;
+                            me.clearTimeout(me._actionWidgets.cacheWinTimeout);
+                            me._actionWidgets.cacheWinTimeout = 0;
+                        }, 1000, this
+                    );
                 }
             } else if (state) {
                 this._actionWidgets[wid] = ui = null;
