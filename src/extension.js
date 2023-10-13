@@ -247,8 +247,8 @@ class Manager {
         let shader = '';
         if (type == 'close') {
             shader =
-                'color.g *= 1.0-value; ' +
-                'color.b *= 1.0-value; ';
+                'color.g *= 1-(0.3*value); ' +
+                'color.b *= 1-(0.34*value); ';
         }
         else {
             shader =
@@ -269,6 +269,9 @@ class Manager {
         if (actor) {
             fx._fxname = name;
             actor.fx = fx;
+            if (actor.get_effect(name)) {
+                actor.remove_effect_by_name(name);
+            }
             actor.add_effect_with_name(name, fx);
         }
         fx.release = () => {
