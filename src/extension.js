@@ -298,6 +298,7 @@ class Manager {
             if (actor) {
                 actor.remove_effect_by_name(name);
                 actor._effect = null;
+                delete actor._effect;
                 actor = null;
             }
             effect = null;
@@ -1598,7 +1599,22 @@ class Manager {
 
                             if (aui) {
                                 ui.push(aui);
-                                aui.set_pivot_point(0.5, 0.5);
+                                let mrect = monitorArea[i]
+                                    .get_work_area_current_monitor();
+                                let wrect = monitorArea[i].get_frame_rect();
+
+                                // black magic calc ;)
+                                let wl = (mrect.width / 32);
+                                aui._t_targetx = (mrect.width - wl) - wrect.x;
+                                var nx = (0 - (wrect.width - wl)) - wrect.x;
+                                aui.set_pivot_point(1.0, 0.5);
+                                if (Math.abs(nx) < Math.abs(aui._t_targetx)) {
+                                    aui._t_targetx = nx;
+                                    aui.set_pivot_point(1, (i % 5) * 0.25);
+                                }
+                                else {
+                                    aui.set_pivot_point(0, (i % 5) * 0.25);
+                                }
                             }
                         }
                     }
@@ -1613,10 +1629,12 @@ class Manager {
             if (ui && ui != -1) {
                 if (!state) {
                     ui.forEach((aui) => {
-                        aui.set_pivot_point(0.5, 0.5);
-                        aui.opacity = 255 - Math.round(210 * progress);
-                        aui.scale_x = 1.0 - (progress * 0.4);
-                        aui.scale_y = 1.0 - (progress * 0.4);
+                        aui.opacity = 255 - Math.round(180 * progress);
+                        aui.scale_y =
+                            aui.scale_x = 1.0 - (progress * 0.6);
+                        aui.translation_x = (
+                            (progress * progress) * aui._t_targetx
+                        );
                     });
                 }
                 else {
@@ -1634,10 +1652,13 @@ class Manager {
                             duration: Math.round(250 * progress),
                             mode: Clutter.AnimationMode.EASE_OUT_QUAD,
                             opacity: 255,
+                            translation_x: 0,
                             scale_x: 1,
                             scale_y: 1,
                             onStopped: () => {
                                 aui.set_pivot_point(0, 0);
+                                delete aui._t_targetx;
+                                delete aui._t_targety;
                             }
                         });
                     });
