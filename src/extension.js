@@ -1735,13 +1735,13 @@ class Manager {
                             global.get_current_time()
                         );
                         if (prv) {
-                            me._actionWidgets.cacheWinTabList.unshift(
-                                me._actionWidgets.cacheWinTabList.pop()
+                            this._actionWidgets.cacheWinTabList.unshift(
+                                this._actionWidgets.cacheWinTabList.pop()
                             );
                         }
                         else {
-                            me._actionWidgets.cacheWinTabList.push(
-                                me._actionWidgets.cacheWinTabList.shift()
+                            this._actionWidgets.cacheWinTabList.push(
+                                this._actionWidgets.cacheWinTabList.shift()
                             );
                         }
                     }
