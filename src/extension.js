@@ -20,7 +20,7 @@ import Clutter from 'gi://Clutter';
 import Meta from 'gi://Meta';
 import GLib from 'gi://GLib';
 import St from 'gi://St';
-import GObject from 'gi://GObject';
+// import GObject from 'gi://GObject';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -58,46 +58,6 @@ const WindowEdgeAction = {
 const WindowClassBlacklist = [
     "gjs"
 ];
-
-// Close Shader
-class WGSShader extends Clutter.ShaderEffect {
-    constructor(type) {
-        super();
-        if (type == 'close') {
-            // Red Close
-            this._script =
-                'vec4 color = texture2D( tex, cogl_tex_coord_in[0].st ); ' +
-                'color.r *= 1.0+progress; ' +
-                'color.g *= 1.0-(progress/2); ' +
-                'color.b *= 1.0-(progress/2); ' +
-                'cogl_color_out = color * cogl_color_in;';
-        }
-        else {
-            // Dim
-            this._script =
-                'vec4 color = texture2D( tex, cogl_tex_coord_in[0].st ); ' +
-                'color.rgb *= 1.0-progress; ' +
-                'cogl_color_out = color * cogl_color_in;';
-        }
-    }
-    setValue(v) {
-        this.set_uniform_value('progress', v);
-    }
-    vfunc_get_static_shader_source() {
-        return 'uniform sampler2D tex; ' +
-            'uniform float progress; ' +
-            'void main() { ' + this._script + ' }';
-    }
-    vfunc_paint_target(paint_node = null, paint_context = null) {
-        this.set_uniform_value('tex', 0);
-        if (paint_node && paint_context)
-            super.vfunc_paint_target(paint_node, paint_context);
-        else if (paint_node)
-            super.vfunc_paint_target(paint_node);
-        else
-            super.vfunc_paint_target();
-    }
-}
 
 // Manager Class
 class Manager {
@@ -281,29 +241,45 @@ class Manager {
 
     // Create Shader Effect
     _createShader(type, actor, name) {
-        if (!this._ShaderClass) {
-            this._ShaderClass = new GObject.registerClass(
-                {
-                    GTypeName: 'WGSShader',
-                },
-                WGSShader
-            );
+        let fx = new Clutter.ShaderEffect(
+            { shader_type: Clutter.ShaderType.FRAGMENT_SHADER }
+        );
+        let shader = '';
+        if (type == 'close') {
+            shader =
+                'color.g *= 1.0-value; ' +
+                'color.b *= 1.0-value; ';
         }
-        let effect = new this._ShaderClass(type);
+        else {
+            shader =
+                'color.rgb *= 1.0-value; ';
+        }
+        fx.set_shader_source(
+            'uniform sampler2D tex; ' +
+            'uniform float value; ' +
+            'void main() { ' +
+            'vec4 color=texture2D(tex,cogl_tex_coord_in[0].st);' +
+            shader +
+            'cogl_color_out = color * cogl_color_in;}'
+        );
+        fx.set_uniform_value('tex', 0);
+        fx.setValue = function (v) {
+            fx.set_uniform_value('value', v);
+        }
         if (actor) {
-            actor._effect = effect;
-            actor.add_effect_with_name(name, effect);
+            fx._fxname = name;
+            actor.fx = fx;
+            actor.add_effect_with_name(name, fx);
         }
-        effect.release = () => {
+        fx.release = () => {
             if (actor) {
-                actor.remove_effect_by_name(name);
-                actor._effect = null;
-                delete actor._effect;
+                actor.remove_effect_by_name(actor.fx._fxname);
+                actor.fx = null;
                 actor = null;
             }
-            effect = null;
+            fx = null;
         };
-        return effect;
+        return fx;
     }
 
     _isWindowBlacklist(win) {
@@ -1520,7 +1496,7 @@ class Manager {
                     if (ui) {
                         ui.set_pivot_point(0.5, 0.5);
                         this._createShader('close', ui, 'closeindicator');
-                        ui._effect.setValue(0);
+                        ui.fx.setValue(0);
                     }
                 }
                 else {
@@ -1535,7 +1511,7 @@ class Manager {
                     ui.opacity = 255 - Math.round(40 * progress);
                     ui.scale_x = 1.0 - (progress * 0.08);
                     ui.scale_y = 1.0 - (progress * 0.08);
-                    ui._effect.setValue(progress * 0.6);
+                    ui.fx.setValue(progress * 0.99);
                 }
                 else {
                     activeWin = null;
@@ -1546,7 +1522,7 @@ class Manager {
                     }
 
                     let me = this;
-                    ui._effect.release();
+                    ui.fx.release();
                     ui.ease({
                         duration: Math.round(250 * progress),
                         mode: Clutter.AnimationMode.EASE_OUT_QUAD,
