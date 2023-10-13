@@ -71,12 +71,12 @@
         </key>
 
         <key type="i" name="pinch-in-scale">
-            <default>60</default>
+            <default>50</default>
             <summary>Pinch-In Scale</summary>
             <range min="30" max="80"/>
         </key>
         <key type="i" name="pinch-out-scale">
-            <default>140</default>
+            <default>150</default>
             <summary>Pinch-In Scale</summary>
             <range min="120" max="200"/>
         </key>

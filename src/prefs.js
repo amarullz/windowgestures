@@ -120,11 +120,11 @@ export default class extends ExtensionPreferences {
         this._createSpin(pinch, "pinch-in-scale",
             "Pinch-In Trigger Scale Perentage",
             "Trigger pinch-in if pinch scale lower than this value",
-            30, 80, 10);
+            30, 80, 5);
         this._createSpin(pinch, "pinch-out-scale",
             "Pinch-Out Trigger Scale Perentage",
             "Trigger pinch-out if pinch scale bigger than this value",
-            120, 200, 10);
+            120, 200, 5);
 
 
         // Tweaks Settings
