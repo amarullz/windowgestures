@@ -1496,7 +1496,7 @@ class Manager {
                     if (ui) {
                         ui.set_pivot_point(0.5, 0.5);
                         this._createShader('close', ui, 'closeindicator');
-                        ui.fx.setValue(0);
+                        ui.fx?.setValue(0);
                     }
                 }
                 else {
@@ -1511,7 +1511,7 @@ class Manager {
                     ui.opacity = 255 - Math.round(40 * progress);
                     ui.scale_x = 1.0 - (progress * 0.08);
                     ui.scale_y = 1.0 - (progress * 0.08);
-                    ui.fx.setValue(progress * 0.99);
+                    ui.fx?.setValue(progress * 0.99);
                 }
                 else {
                     activeWin = null;
@@ -1522,7 +1522,7 @@ class Manager {
                     }
 
                     let me = this;
-                    ui.fx.release();
+                    ui.fx?.release();
                     ui.ease({
                         duration: Math.round(250 * progress),
                         mode: Clutter.AnimationMode.EASE_OUT_QUAD,
