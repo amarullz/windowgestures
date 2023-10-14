@@ -1908,7 +1908,6 @@ class Manager {
                 if (activeWin) {
                     let wsid = activeWin.get_workspace().index();
                     let tsid = wsid;
-                    activeWin.stick();
                     if (prv) {
                         if (wsid == 0) {
                             let wpl = activeWin.get_workspace().list_windows();
@@ -1928,21 +1927,27 @@ class Manager {
                     else {
                         tsid++;
                     }
-                    if (inserted) {
-                        this._insertWorkspace(0);
+                    // Make sure move left from left-most workspace only
+                    // triggered if other window is available in
+                    // current workspace
+                    if (inserted !== 1) {
+                        activeWin.stick();
+                        if (inserted) {
+                            this._insertWorkspace(0);
+                        }
+                        ui = {
+                            confirmSwipe: () => { },
+                            wm: Main.wm._workspaceAnimation,
+                            win: activeWin,
+                            wid: tsid,
+                            sid: wsid,
+                            ins: inserted
+                        };
+                        ui.wm._switchWorkspaceBegin(
+                            ui,
+                            global.display.get_primary_monitor()
+                        );
                     }
-                    ui = {
-                        confirmSwipe: () => { },
-                        wm: Main.wm._workspaceAnimation,
-                        win: activeWin,
-                        wid: tsid,
-                        sid: wsid,
-                        ins: inserted
-                    };
-                    ui.wm._switchWorkspaceBegin(
-                        ui,
-                        global.display.get_primary_monitor()
-                    );
                 }
                 this._actionWidgets[wid] = ui;
             }
