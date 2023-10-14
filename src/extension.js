@@ -27,28 +27,28 @@ import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
 
 // Window edge action
 const WindowEdgeAction = {
-    NONE: 0,                // No action
-    WAIT_GESTURE: 0x01,     // Wait for gesture flag
-    MOVE: 0x02,             // Move flag
-    RESIZE: 0x04,           // Resize flag
+    NONE: 0,                    // No action
+    WAIT_GESTURE: 0x01,         // Wait for gesture flag
+    MOVE: 0x02,                 // Move flag
+    RESIZE: 0x04,               // Resize flag
 
-    GESTURE_LEFT: 0x10,     // Gesture Left
-    GESTURE_RIGHT: 0x20,    // Gesture Right
-    GESTURE_UP: 0x40,       // Gesture Up
-    GESTURE_DOWN: 0x80,     // Gesture Down
+    GESTURE_LEFT: 0x10,         // Gesture Left
+    GESTURE_RIGHT: 0x20,        // Gesture Right
+    GESTURE_UP: 0x40,           // Gesture Up
+    GESTURE_DOWN: 0x80,         // Gesture Down
 
-    GESTURE_UP_LEFT: 0x100, // Gesture Up Left
-    GESTURE_UP_RIGHT: 0x200,// Gesture Up Right
+    GESTURE_UP_LEFT: 0x100,     // Gesture Up Left
+    GESTURE_UP_RIGHT: 0x200,    // Gesture Up Right
 
-    GESTURE_HORIZONTAL: 0x400, // Non-Window Gestures
+    GESTURE_HORIZONTAL: 0x400,  // Non-Window Gestures
     GESTURE_VERTICAL: 0x800,
 
-    RESIZE_LEFT: 0x1000,
+    RESIZE_LEFT: 0x1000,        // Resize Flags
     RESIZE_RIGHT: 0x2000,
     RESIZE_TOP: 0x4000,
     RESIZE_BOTTOM: 0x8000,
 
-    MOVE_SNAP_TOP: 0x10000,
+    MOVE_SNAP_TOP: 0x10000,     // Snap Flags
     MOVE_SNAP_LEFT: 0x20000,
     MOVE_SNAP_RIGHT: 0x40000
 
@@ -1822,8 +1822,16 @@ class Manager {
                     activeWin.stick();
                     if (prv) {
                         if (wsid == 0) {
-                            inserted = activeWin.get_workspace()
-                                .list_windows().length;
+                            let wpl = activeWin.get_workspace().list_windows();
+                            inserted = wpl.length;
+                            if (inserted > 1) {
+                                // Check for blacklisted windows
+                                for (var i = 0; i < inserted; i++) {
+                                    if (this._isWindowBlacklist(wpl[i])) {
+                                        inserted--;
+                                    }
+                                }
+                            }
                             wsid = tsid = 1;
                         }
                         tsid--;
