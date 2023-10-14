@@ -450,7 +450,7 @@ class Manager {
         }
         let wsid = this._targetWindow.get_workspace().index();
         if (wsid == 0 && !moveRight) {
-            this._insertWorkspace(0, this._targetWindow, 1);
+            this._insertWorkspace(0, this._targetWindow);
             return;
         }
         let tw = this._targetWindow.get_workspace()
@@ -461,7 +461,7 @@ class Manager {
     }
 
     // Insert new workspace
-    _insertWorkspace(pos, chkwin, activate) {
+    _insertWorkspace(pos, chkwin) {
         // Main.wm.insertWorkspace(0);
         let wm = global.workspace_manager;
         if (!Meta.prefs_get_dynamic_workspaces()) {
@@ -483,12 +483,12 @@ class Manager {
                 return -1;
             window.change_workspace_by_index(index + 1, true);
         });
-        wm.get_workspace_by_index(pos + 1).activate(global.get_current_time());
         if (chkwin) {
+            wm.get_workspace_by_index(pos + 1).activate(
+                global.get_current_time()
+            );
             chkwin.change_workspace_by_index(pos, true);
-            if (activate) {
-                this._targetWindow.activate(global.get_current_time());
-            }
+            this._targetWindow.activate(global.get_current_time());
         }
         return pos;
     }
@@ -1815,34 +1815,31 @@ class Manager {
                 ui = -1;
                 // Cancel cache win timeout
                 activeWin = global.display.get_focus_window();
+                let inserted = 0;
                 if (activeWin) {
                     let wsid = activeWin.get_workspace().index();
                     let tsid = wsid;
                     activeWin.stick();
                     if (prv) {
                         if (wsid == 0) {
-                            this._insertWorkspace(0);
-                            Main.wm._workspaceTracker
-                                ._workspaces[0]._keepAliveId = 1;
-                            wsid = 1;
+                            inserted = 1;
+                            wsid = tsid = 1;
                         }
                         tsid--;
-                        // activeWin.change_workspace_by_index(tsid, true);
                     }
                     else {
                         tsid++;
-                        // activeWin.change_workspace_by_index(tsid, true);
                     }
-                    // Main.wm._workspaceAnimation._swipeTracker.orientation =
-                    //     Clutter.Orientation.HORIZONTAL;
-                    // Main.wm._workspaceAnimation._swipeTracker.emit(
-                    //     'begin', activeWin.get_monitor());
+                    if (inserted) {
+                        this._insertWorkspace(0);
+                    }
                     ui = {
                         confirmSwipe: () => { },
                         wm: Main.wm._workspaceAnimation,
                         win: activeWin,
                         wid: tsid,
-                        sid: wsid
+                        sid: wsid,
+                        ins: inserted
                     };
                     ui.wm._switchWorkspaceBegin(
                         ui,
@@ -1853,47 +1850,32 @@ class Manager {
             }
             if (ui && ui != -1) {
                 if (!state) {
-                    // Main.wm._workspaceAnimation._swipeTracker.emit('update',
-                    //     (prv) ? 0 - progress : progress
-                    // );
                     ui.wm._switchWorkspaceUpdate(
                         ui,
                         ui.sid + ((prv) ? 0 - progress : progress)
-                    );
+                    )
                 }
                 else {
+                    ui.win.unstick();
+                    ui.wm._switchWorkspaceEnd(
+                        ui, 350, // * (1.0 - (Math.abs(progress - 0.5) * 2.0)),
+                        ui.sid + ((prv) ? 0 - progress : progress)
+                    );
                     if (progress > 0.5) {
-                        ui.wm._switchWorkspaceEnd(
-                            ui, 10,
-                            ui.sid + ((prv) ? 0 - progress : progress)
-                        );
                         ui.win.change_workspace_by_index(
                             ui.wid, true
                         );
-                        // Main.wm._workspaceAnimation._swipeTracker.emit(
-                        //     'end', 10, (prv) ? 0 - progress : progress);
-
+                        global.workspace_manager.get_workspace_by_index(ui.wid)
+                            .activate(
+                                global.get_current_time()
+                            );
                     }
-                    else {
-                        ui.wm._switchWorkspaceEnd(
-                            ui, 100,
-                            ui.sid + ((prv) ? 0 - progress : progress)
-                        );
+                    else if (ui.ins) {
                         ui.win.change_workspace_by_index(
                             ui.sid, true
                         );
-                        // Main.wm._workspaceAnimation._swipeTracker.emit(
-                        //     'end', 100, (prv) ? 0 - progress : progress);
-
                     }
-                    if (Main.wm._workspaceTracker._workspaces[0]._keepAliveId) {
-                        Main.wm._workspaceTracker
-                            ._workspaces[0]._keepAliveId = 0;
-                    }
-
-                    ui.win.unstick();
                     ui.win.activate(global.get_current_time());
-
                     this._actionWidgets[wid] = ui = null;
                 }
             } else if (state) {
