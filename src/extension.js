@@ -1822,7 +1822,8 @@ class Manager {
                     activeWin.stick();
                     if (prv) {
                         if (wsid == 0) {
-                            inserted = 1;
+                            inserted = activeWin.get_workspace()
+                                .list_windows().length;
                             wsid = tsid = 1;
                         }
                         tsid--;
@@ -1858,7 +1859,7 @@ class Manager {
                 else {
                     ui.win.unstick();
                     ui.wm._switchWorkspaceEnd(
-                        ui, 350, // * (1.0 - (Math.abs(progress - 0.5) * 2.0)),
+                        ui, 350,
                         ui.sid + ((prv) ? 0 - progress : progress)
                     );
                     if (progress > 0.5) {
@@ -1871,9 +1872,17 @@ class Manager {
                             );
                     }
                     else if (ui.ins) {
-                        ui.win.change_workspace_by_index(
-                            ui.sid, true
-                        );
+                        // list_windows
+                        if (ui.ins > 1) {
+                            ui.win.change_workspace_by_index(
+                                ui.sid, true
+                            );
+                        }
+                        else {
+                            ui.win.change_workspace_by_index(
+                                ui.wid, true
+                            );
+                        }
                     }
                     ui.win.activate(global.get_current_time());
                     this._actionWidgets[wid] = ui = null;
