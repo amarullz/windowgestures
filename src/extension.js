@@ -450,7 +450,7 @@ class Manager {
         }
         let wsid = this._targetWindow.get_workspace().index();
         if (wsid == 0 && !moveRight) {
-            this._insertWorkspace(0, this._targetWindow)
+            this._insertWorkspace(0, this._targetWindow, 1);
             return;
         }
         let tw = this._targetWindow.get_workspace()
@@ -461,33 +461,36 @@ class Manager {
     }
 
     // Insert new workspace
-    _insertWorkspace(pos, chkwin) {
+    _insertWorkspace(pos, chkwin, activate) {
+        // Main.wm.insertWorkspace(0);
         let wm = global.workspace_manager;
         if (!Meta.prefs_get_dynamic_workspaces()) {
-            return false;
+            return -1;
         }
         wm.append_new_workspace(false, global.get_current_time());
         let windows = global.get_window_actors().map(a => a.meta_window);
         windows.forEach(window => {
             if (chkwin && chkwin == window)
-                return;
+                return -1;
             if (window.get_transient_for() != null)
-                return;
+                return -1;
             if (window.is_override_redirect())
-                return;
+                return -1;
             if (window.on_all_workspaces)
-                return;
+                return -1;
             let index = window.get_workspace().index();
             if (index < pos)
-                return;
+                return -1;
             window.change_workspace_by_index(index + 1, true);
         });
         wm.get_workspace_by_index(pos + 1).activate(global.get_current_time());
         if (chkwin) {
             chkwin.change_workspace_by_index(pos, true);
-            this._targetWindow.activate(global.get_current_time());
+            if (activate) {
+                this._targetWindow.activate(global.get_current_time());
+            }
         }
-        return 0;
+        return pos;
     }
 
     // Have Left Workspace
@@ -1792,7 +1795,116 @@ class Manager {
                 this._actionWidgets[wid] = ui = null;
             }
         }
-        else if (id >= 6 && id <= 7) {
+
+
+        else if ((id == 6) || (id == 7)) {
+            //
+            // NEXT & PREVIOUS WINDOW SWITCHING
+            //
+            if (this._isOnOverview()) {
+                return; // Ignore on overview
+            }
+
+            let prv = (id == 6);
+            let wid = prv ? "movewin_left" : "movewin_right";
+            let ui = this._actionWidgets[wid];
+            let activeWin = null;
+
+            // Init indicator
+            if (!ui) {
+                ui = -1;
+                // Cancel cache win timeout
+                activeWin = global.display.get_focus_window();
+                if (activeWin) {
+                    let wsid = activeWin.get_workspace().index();
+                    let tsid = wsid;
+                    activeWin.stick();
+                    if (prv) {
+                        if (wsid == 0) {
+                            this._insertWorkspace(0);
+                            Main.wm._workspaceTracker
+                                ._workspaces[0]._keepAliveId = 1;
+                            wsid = 1;
+                        }
+                        tsid--;
+                        // activeWin.change_workspace_by_index(tsid, true);
+                    }
+                    else {
+                        tsid++;
+                        // activeWin.change_workspace_by_index(tsid, true);
+                    }
+                    // Main.wm._workspaceAnimation._swipeTracker.orientation =
+                    //     Clutter.Orientation.HORIZONTAL;
+                    // Main.wm._workspaceAnimation._swipeTracker.emit(
+                    //     'begin', activeWin.get_monitor());
+                    ui = {
+                        confirmSwipe: () => { },
+                        wm: Main.wm._workspaceAnimation,
+                        win: activeWin,
+                        wid: tsid,
+                        sid: wsid
+                    };
+                    ui.wm._switchWorkspaceBegin(
+                        ui,
+                        global.display.get_primary_monitor()
+                    );
+                }
+                this._actionWidgets[wid] = ui;
+            }
+            if (ui && ui != -1) {
+                if (!state) {
+                    // Main.wm._workspaceAnimation._swipeTracker.emit('update',
+                    //     (prv) ? 0 - progress : progress
+                    // );
+                    ui.wm._switchWorkspaceUpdate(
+                        ui,
+                        ui.sid + ((prv) ? 0 - progress : progress)
+                    );
+                }
+                else {
+                    if (progress > 0.5) {
+                        ui.wm._switchWorkspaceEnd(
+                            ui, 10,
+                            ui.sid + ((prv) ? 0 - progress : progress)
+                        );
+                        ui.win.change_workspace_by_index(
+                            ui.wid, true
+                        );
+                        // Main.wm._workspaceAnimation._swipeTracker.emit(
+                        //     'end', 10, (prv) ? 0 - progress : progress);
+
+                    }
+                    else {
+                        ui.wm._switchWorkspaceEnd(
+                            ui, 100,
+                            ui.sid + ((prv) ? 0 - progress : progress)
+                        );
+                        ui.win.change_workspace_by_index(
+                            ui.sid, true
+                        );
+                        // Main.wm._workspaceAnimation._swipeTracker.emit(
+                        //     'end', 100, (prv) ? 0 - progress : progress);
+
+                    }
+                    if (Main.wm._workspaceTracker._workspaces[0]._keepAliveId) {
+                        Main.wm._workspaceTracker
+                            ._workspaces[0]._keepAliveId = 0;
+                    }
+
+                    ui.win.unstick();
+                    ui.win.activate(global.get_current_time());
+
+                    this._actionWidgets[wid] = ui = null;
+                }
+            } else if (state) {
+                this._actionWidgets[wid] = ui = null;
+            }
+        }
+
+
+
+
+        else if (id >= 8 && id <= 9) {
             //
             // BACK / FORWARD
             //
@@ -1804,7 +1916,7 @@ class Manager {
                 Clutter.KEY_Back,
                 Clutter.KEY_Forward
             ];
-            let kid = id - 6;
+            let kid = id - 8;
             let activeWin = null;
             let kidw = kid ? 'btnforward' : 'btnback';
             let ui = this._actionWidgets[kidw];
@@ -1877,7 +1989,7 @@ class Manager {
                 this._actionWidgets[kidw] = ui = null;
             }
         }
-        else if (id >= 8 && id <= 12) {
+        else if (id >= 10 && id <= 14) {
             //
             // MEDIA & BRIGHTNESS
             //
@@ -1890,8 +2002,8 @@ class Manager {
             ];
             let wid = 'keys_' + id;
             let cid = 'keysn_' + id;
-            let keyId = keyList[id - 8];
-            let isRepeat = (id != 10);
+            let keyId = keyList[id - 10];
+            let isRepeat = (id != 12);
 
             if (!state && (progress >= 1)) {
                 if (isRepeat) {
@@ -1936,7 +2048,7 @@ class Manager {
         //
         // TODO: Change Below Actions
         //
-        else if (id == 13) {
+        else if (id == 15) {
             if (this._isOnOverview()) {
                 // Ignore on overview
                 return;
@@ -1948,7 +2060,7 @@ class Manager {
             // ALT+TAB
             this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_Tab]);
         }
-        else if (id == 14) {
+        else if (id == 16) {
             if (!state || progress < 1.0) {
                 // Ignore if non end
                 return;
@@ -1956,7 +2068,7 @@ class Manager {
             // Overview (Super)
             this._sendKeyPress([Clutter.KEY_Super_L]);
         }
-        else if (id == 15) {
+        else if (id == 17) {
             if (!state || progress < 1.0) {
                 // Ignore if non end
                 return;
@@ -1964,23 +2076,25 @@ class Manager {
             // Show Apps (Super+A)
             this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_A + _LCASE]);
         }
-        else if (id == 16) {
+        else if (id == 18) {
             if (!state || progress < 1.0) {
                 // Ignore if non end
                 return;
             }
             // Quick Settings (Super+S)
-            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_S + _LCASE]);
+            Main.wm._toggleQuickSettings();
+            // this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_S + _LCASE]);
         }
-        else if (id == 17) {
+        else if (id == 19) {
             if (!state || progress < 1.0) {
                 // Ignore if non end
                 return;
             }
             // Notification (Super+V)
-            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_V + _LCASE]);
+            Main.wm._toggleCalendar();
+            // this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_V + _LCASE]);
         }
-        else if (id == 18) {
+        else if (id == 20) {
             if (!state || progress < 1.0) {
                 // Ignore if non end
                 return;
@@ -1992,6 +2106,24 @@ class Manager {
         //
         // End Of Actions
         //
+
+        /*
+        let stk=Main.wm._workspaceAnimation._swipeTracker;
+        stk.emit('begin',global.display.get_primary_monitor());
+        stk.emit('update',0.5);
+        stk.emit('end',100,1.0);
+
+        Main.wm._workspaceAnimation._swipeTracker.orientation=Clutter.Orientation.HORIZONTAL;
+        Main.wm._workspaceAnimation._swipeTracker.emit('begin',global.display.get_primary_monitor());
+        Main.wm._workspaceAnimation._swipeTracker.emit('update',-0.5);
+        Main.wm._workspaceAnimation._swipeTracker.emit('end',100,-1.0);
+
+        Main.wm._workspaceAnimation._swipeTracker.orientation=Clutter.Orientation.HORIZONTAL;
+        Main.wm._workspaceAnimation._swipeTracker.emit('begin',global.display.get_primary_monitor());
+        Main.wm._workspaceAnimation._swipeTracker.emit('update',0.5);
+        Main.wm._workspaceAnimation._swipeTracker.emit('end',100,1.0);
+
+        */
     }
 }
 

@@ -84,17 +84,22 @@ export default class extends ExtensionPreferences {
             "Minimize Window",
             "Close Window",
             "Show Desktop",
-            "Next Window",
+
+            "Next Window", // 4
             "Previous Window",
-            "Back",
+
+            "Move Window Left Workspace", // 6
+            "Move Window Right Workspace",
+
+            "Back",  //8
             "Forward",
-            "Volume Up",
+            "Volume Up", // 10
             "Volume Down",
             "Mute",
-            "Brightness Up",
+            "Brightness Up", // 13
             "Brightness Down",
 
-            "Alt+Tab Switch",
+            "Alt+Tab Switch", // 15
             "Overview (Super)",
             "App (Super+A)",
             "Quick Settings",
