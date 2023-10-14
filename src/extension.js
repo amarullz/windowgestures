@@ -113,6 +113,53 @@ class Manager {
         this._ShaderClass = null;
     }
 
+
+
+    // Initialize variables
+    _clearVars() {
+        // Target window to manage
+        this._targetWindow = null;
+
+        // Mouse start position
+        this._startPos = {
+            x: 0, y: 0
+        };
+
+        // Mouse start position
+        this._movePos = {
+            x: 0, y: 0
+        };
+
+        // Monitor Id
+        this._monitorId = 0;
+
+        // Monitor Workarea
+        this._monitorArea = null;
+
+        // Starting Window Area
+        this._startWinArea = null;
+
+        // Edge Action
+        this._edgeAction = WindowEdgeAction.NONE;
+        this._edgeGestured = false;
+
+        // Pinch
+        this._pinch = {
+            begin: false,
+            fingers: 0,
+            progress: 0,
+
+            velocity: null,
+
+            action: 0,
+            action_id: 0,
+            action_cmp: 0
+        };
+
+        // Clear window tile preview
+        this._hidePreview();
+    }
+
     // Init 3 or 4 finger count switch mode
     _initFingerCountFlip() {
         // Move 3-4 Finger Gesture
@@ -284,6 +331,62 @@ class Manager {
         };
         return fx;
     }
+
+    // Velocity functions
+    _velocityInit() {
+        let vel = {
+            data: [],
+            prev: 0
+        };
+        return vel;
+    }
+    _velocityTrim(vel) {
+        const thresholdTime = this._tick() - 150;
+        const index = vel.data.findIndex(r => r.time >= thresholdTime);
+        vel.data.splice(0, index);
+    }
+    _velocityAppend(vel, v) {
+        this._velocityTrim(vel);
+        let vb = Math.abs(v);
+        let d = vb - vel.prev;
+        vel.prev = vb;
+        vel.data.push({ time: this._tick(), delta: d });
+    }
+    _velocityCalc(vel) {
+        this._velocityTrim(vel);
+        if (vel.data.length < 2)
+            return 0;
+        const firstTime = vel.data[0].time;
+        const lastTime = vel.data[vel.data.length - 1].time;
+        if (firstTime === lastTime)
+            return 0;
+        const totalDelta = vel.data.slice(1).map(
+            a => a.delta).reduce((a, b) => a + b);
+        const period = lastTime - firstTime;
+        return totalDelta / period;
+    }
+    _velocityFling(vel, curr, max, maxframe, cb) {
+        let n = 0;
+        let target = curr;
+        let v = vel;
+        let me = this;
+        let iv = this.setInterval(function () {
+            target += v * 2;
+            v *= 0.98;
+            n++;
+            if (target >= max || n >= maxframe) {
+                if (target >= max) {
+                    target = max;
+                }
+                cb(1, target);
+                me.clearInterval(iv);
+            }
+            else {
+                cb(0, target);
+            }
+        }, 4);
+    }
+
 
     _tick() {
         return new Date().getTime();
@@ -499,49 +602,6 @@ class Manager {
             return false;
         }
         return (this._targetWindow.get_workspace().index() > 0);
-    }
-
-    // Initialize variables
-    _clearVars() {
-        // Target window to manage
-        this._targetWindow = null;
-
-        // Mouse start position
-        this._startPos = {
-            x: 0, y: 0
-        };
-
-        // Mouse start position
-        this._movePos = {
-            x: 0, y: 0
-        };
-
-        // Monitor Id
-        this._monitorId = 0;
-
-        // Monitor Workarea
-        this._monitorArea = null;
-
-        // Starting Window Area
-        this._startWinArea = null;
-
-        // Edge Action
-        this._edgeAction = WindowEdgeAction.NONE;
-        this._edgeGestured = false;
-
-        // Pinch
-        this._pinch = {
-            begin: false,
-            fingers: 0,
-
-            action: 0,
-            progress: 0,
-            action_id: 0,
-            action_cmp: 0
-        };
-
-        // Clear window tile preview
-        this._hidePreview();
     }
 
     _resetWinPos() {
@@ -1317,7 +1377,12 @@ class Manager {
                 if (aid) {
                     this._runAction(aid, 1, 0);
                 }
+
+                // Reset velocity
+                this._pinch.velocity = this._velocityInit();
+                this._velocityAppend(this._pinch.velocity, 0);
             }
+            this._velocityAppend(this._pinch.velocity, this._pinch.progress);
 
             let action_id = this._pinchGetCurrentActionId();
             if (action_id) {
@@ -1333,6 +1398,22 @@ class Manager {
     _pinchEnd() {
         let action_id = this._pinchGetCurrentActionId();
         if (action_id) {
+            if (this._pinch.progress < 1.0) {
+                // Fling Velocity
+                let vel = this._velocityCalc(this._pinch.velocity);
+                if (vel > 0.001) {
+                    let me = this;
+                    this._velocityFling(vel,
+                        this._pinch.progress,
+                        1.0, 30,
+                        function (state, prog) {
+                            me._runAction(action_id, state, prog);
+                        }
+                    );
+                    this._clearVars();
+                    return Clutter.EVENT_STOP;
+                }
+            }
             this._runAction(action_id, 1, this._pinch.progress);
         }
 
@@ -1354,11 +1435,19 @@ class Manager {
         // Process gestures state
         switch (event.get_gesture_phase()) {
             case Clutter.TouchpadGesturePhase.BEGIN:
-                this._pinch.fingers = numfingers;
+                // Pinch Variables
                 this._pinch.begin = true;
-                this._pinch.action = 0;
+                this._pinch.fingers = numfingers;
                 this._pinch.progress = 0;
+
+                // Action Variables
+                this._pinch.action = 0;
                 this._pinch.action_cmp = 0;
+                this._pinch.action_id = 0;
+
+                // Velocity Variables
+                this._pinch.velocity = this._velocityInit();
+                this._velocityAppend(this._pinch.velocity, 0);
                 return Clutter.EVENT_STOP;
 
             case Clutter.TouchpadGesturePhase.UPDATE:
