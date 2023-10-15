@@ -85,7 +85,7 @@ class Manager {
         // Capture Touchpad Event
         this._gestureCallbackID = global.stage.connect(
             'captured-event::touchpad',
-            this._touchEvent.bind(this)
+            this._touchpadEvent.bind(this)
         );
 
         // init 3 or 4 fingers config support
@@ -142,9 +142,11 @@ class Manager {
         // Edge Action
         this._edgeAction = WindowEdgeAction.NONE;
         this._edgeGestured = false;
+        this._swipeIsWin = false;
+        this._isActiveWin = false;
 
         // Pinch
-        this._pinch = {
+        this._gesture = {
             begin: false,
             fingers: 0,
             progress: 0,
@@ -523,7 +525,7 @@ class Manager {
 
     // Move Mouse Pointer
     _movePointer(x, y) {
-        if (!this._getUseActiveWindow()) {
+        if (!this._isActiveWin) {
             // Move only if not use active window
             this._virtualTouchpad.notify_relative_motion(
                 global.get_current_time(), x, y
@@ -653,8 +655,8 @@ class Manager {
         GLib.source_remove(id);
     }
 
-    // On touch gesture started
-    _touchStarted() {
+    // On swipe gesture started
+    _swipeBegin1() {
         // Stop if it was on overview
         if (this._isOnOverview()) {
             return Clutter.EVENT_STOP;
@@ -801,8 +803,8 @@ class Manager {
         return Clutter.EVENT_STOP;
     }
 
-    // On touch gesture updated no targetWindow
-    _touchUpdateNoWindow() {
+    // On swipe gesture updated no targetWindow
+    _swipeUpdateNoWindow() {
         if (this._isOnOverview()) {
             return Clutter.EVENT_STOP;
         }
@@ -883,15 +885,15 @@ class Manager {
         return Clutter.EVENT_STOP;
     }
 
-    // On touch gesture updated
-    _touchUpdate(dx, dy) {
+    // On swipe gesture updated
+    _swipeUpdate1(dx, dy) {
         // Moving coordinat
         this._movePos.x += dx;
         this._movePos.y += dy;
 
         // Ignore if no target window
         if (this._targetWindow == null) {
-            return this._touchUpdateNoWindow();
+            return this._swipeUpdateNoWindow();
         }
 
         // Ignore if no edge action (will not happened btw)
@@ -1059,7 +1061,7 @@ class Manager {
                             else {
                                 this._edgeAction = WindowEdgeAction.NONE;
                                 this._targetWindow = null;
-                                return this._touchUpdateNoWindow();
+                                return this._swipeUpdateNoWindow();
                             }
                         }
                         else if (this._movePos.x > threshold) {
@@ -1073,7 +1075,7 @@ class Manager {
                             else {
                                 this._edgeAction = WindowEdgeAction.NONE;
                                 this._targetWindow = null;
-                                return this._touchUpdateNoWindow();
+                                return this._swipeUpdateNoWindow();
                             }
                         }
                     }
@@ -1230,8 +1232,8 @@ class Manager {
         return Clutter.EVENT_STOP;
     }
 
-    // On touch gesture ended
-    _touchEnd() {
+    // On swipe gesture ended
+    _swipeEnd1() {
         /* No target window? return directly */
         if (this._targetWindow == null) {
             this._clearVars();
@@ -1312,43 +1314,540 @@ class Manager {
         return Clutter.EVENT_STOP;
     }
 
-    _actionIdGet(type) {
-        let cfg_name = "";
-        switch (type) {
-            case 1: cfg_name = "swipe4-left"; break;
-            case 2: cfg_name = "swipe4-right"; break;
-            case 3: cfg_name = "swipe3-down"; break;
-            case 4: cfg_name = "swipe3-left"; break;
-            case 5: cfg_name = "swipe3-right"; break;
 
-            case 6: cfg_name = "pinch3-in"; break;
-            case 7: cfg_name = "pinch3-out"; break;
-            case 8: cfg_name = "pinch4-in"; break;
-            case 9: cfg_name = "pinch4-out"; break;
-            default: return 0;
+
+
+
+
+
+
+    // Swipe window move handler
+    _swipeUpdateMove() {
+        let allowMoveSnap = this._getEnableMoveSnap();
+        this._activateWindow();
+        // Move calculation
+        let mX = this._monitorArea.x;
+        let mY = this._monitorArea.y;
+        let mW = this._monitorArea.width;
+        let mR = mX + mW;
+        let winX = this._startWinArea.x + this._movePos.x;
+        let winY = this._startWinArea.y + this._movePos.y;
+        let winR = winX + this._startWinArea.width;
+        // Move action
+        this._targetWindow.move_frame(
+            true,
+            winX, winY
+        );
+        if (allowMoveSnap && winX < mX) {
+            this._showPreview(
+                this._monitorArea.x,
+                this._monitorArea.y,
+                this._monitorArea.width / 2,
+                this._monitorArea.height
+            );
+            this._edgeAction = WindowEdgeAction.MOVE
+                | WindowEdgeAction.MOVE_SNAP_LEFT;
         }
-        return this._settings.get_int(cfg_name);
+        else if (allowMoveSnap && winR > mR) {
+            this._showPreview(
+                this._monitorArea.x + (this._monitorArea.width / 2),
+                this._monitorArea.y,
+                this._monitorArea.width / 2,
+                this._monitorArea.height
+            );
+            this._edgeAction = WindowEdgeAction.MOVE
+                | WindowEdgeAction.MOVE_SNAP_RIGHT;
+        }
+        else if (allowMoveSnap && winY < mY) {
+            this._showPreview(
+                this._monitorArea.x,
+                this._monitorArea.y,
+                this._monitorArea.width,
+                this._monitorArea.height
+            );
+            this._edgeAction = WindowEdgeAction.MOVE
+                | WindowEdgeAction.MOVE_SNAP_TOP;
+        }
+        else {
+            this._edgeAction = WindowEdgeAction.MOVE;
+            this._hidePreview();
+        }
+        return Clutter.EVENT_STOP;
+    }
+
+    // Swipe window resize handler
+    _swipeUpdateResize(dx, dy) {
+        this._activateWindow();
+        // Move cursor pointer
+        this._movePointer(
+            (this._isEdge(WindowEdgeAction.RESIZE_LEFT) ||
+                this._isEdge(WindowEdgeAction.RESIZE_RIGHT)) ? dx : 0,
+            (this._isEdge(WindowEdgeAction.RESIZE_TOP) ||
+                this._isEdge(WindowEdgeAction.RESIZE_BOTTOM)) ? dy : 0
+        );
+        // Resize actions
+        let tX = this._startWinArea.x;
+        let tY = this._startWinArea.y;
+        let tW = this._startWinArea.width;
+        let tH = this._startWinArea.height;
+        if (this._isEdge(WindowEdgeAction.RESIZE_BOTTOM)) {
+            tH += this._movePos.y;
+        }
+        else if (this._isEdge(WindowEdgeAction.RESIZE_TOP)) {
+            tY += this._movePos.y;
+            tH -= this._movePos.y;
+        }
+        if (this._isEdge(WindowEdgeAction.RESIZE_RIGHT)) {
+            tW += this._movePos.x;
+        }
+        else if (this._isEdge(WindowEdgeAction.RESIZE_LEFT)) {
+            tX += this._movePos.x;
+            tW -= this._movePos.x;
+        }
+        let tR = tX + tW;
+        let tB = tY + tH;
+        let mX = this._monitorArea.x;
+        let mY = this._monitorArea.y;
+        let mW = this._monitorArea.width;
+        let mH = this._monitorArea.height;
+        let mR = mX + mW;
+        let mB = mY + mH;
+        // edge
+        if (tX < mX) {
+            tX = mX;
+            tW = tR - tX;
+        }
+        if (tY < mY) {
+            tY = mY;
+            tH = tB - tY;
+        }
+        if (tR > mR) {
+            tW = mR - tX;
+        }
+        if (tB > mB) {
+            tH = mB - tY;
+        }
+        // Resize Window
+        this._targetWindow.move_resize_frame(
+            true,
+            tX, tY, tW, tH
+        );
+        return Clutter.EVENT_STOP;
+    }
+
+    // Begin swipe gesture
+    _swipeBegin(numfingers) {
+        // Swipe Variables
+        this._swipeIsWin = (numfingers == this._gestureNumFinger());
+
+        // Workspace gesture only not on overview
+        if (this._isOnOverview() && !this._swipeIsWin) {
+            return Clutter.EVENT_PROPAGATE;
+        }
+
+        // Init gesture variables
+        this._gesture.begin = true;
+        this._gesture.fingers = numfingers;
+        this._gesture.progress = 0;
+
+        // Action Variables
+        this._gesture.action = 0;
+        this._gesture.action_cmp = 0;
+        this._gesture.action_id = 0;
+
+        // Velocity Variables
+        this._gesture.velocity = this._velocityInit();
+        this._velocityAppend(this._gesture.velocity, 0);
+
+        // Get current mouse position
+        let [pointerX, pointerY, pointerZ] = global.get_pointer();
+
+        this._startPos.x = pointerX;
+        this._startPos.y = pointerY;
+        this._movePos.x = this._movePos.y = 0;
+
+        // Configs
+        let allowResize = this._getEnableResize();
+        let allowMove = this._getEnableMove();
+        this._isActiveWin = false;
+        this._targetWindow = null;
+
+        if (!this._getUseActiveWindow()) {
+            // Get actor in current mouse position
+            let currActor = global.stage.get_actor_at_pos(
+                Clutter.PickMode.REACTIVE, pointerX, pointerY
+            );
+            if (currActor) {
+                // Find root window for current actor
+                let currWindow = currActor.get_parent();
+                let i = 0;
+                while (currWindow && !currWindow.get_meta_window) {
+                    currWindow = currWindow.get_parent();
+                    if (!currWindow || (++i > 10)) {
+                        currWindow = null;
+                        break;
+                    }
+                }
+                // Set meta window as target window to manage
+                this._targetWindow = currWindow?.get_meta_window();
+            }
+        }
+        if (!this._targetWindow) {
+            // Get Active Window
+            this._targetWindow = global.display.get_focus_window();
+            if (!this._targetWindow) {
+                return this._swipeIsWin ?
+                    Clutter.EVENT_STOP : Clutter.EVENT_PROPAGATE;
+            }
+            allowResize = false;
+            this._isActiveWin = true;
+        }
+
+        // Set opener window as target if it was dialog
+        if (this._targetWindow.is_attached_dialog()) {
+            this._targetWindow = this._targetWindow.get_transient_for();
+        }
+
+        // Check blacklist window
+        if (this._isWindowBlacklist(this._targetWindow)) {
+            this._targetWindow = null;
+            return this._swipeIsWin ?
+                Clutter.EVENT_STOP : Clutter.EVENT_PROPAGATE;
+        }
+
+        // Get monitor area
+        this._monitorArea = this._targetWindow.get_work_area_current_monitor();
+
+        // Get monitor id
+        this._monitorId = global.display.get_monitor_index_for_rect(
+            this._monitorArea
+        );
+
+        // Get start frame rectangle
+        this._startWinArea = this._targetWindow.get_frame_rect();
+
+        // Window area as local value
+        let wLeft = this._startWinArea.x;
+        let wTop = this._startWinArea.y;
+        let wRight = wLeft + this._startWinArea.width;
+        let wBottom = wTop + this._startWinArea.height;
+        let wThirdX = wLeft + (this._startWinArea.width / 3);
+        let wThirdY = wTop + (this._startWinArea.height / 3);
+        let w34X = wLeft + ((this._startWinArea.width / 3) * 2);
+        let w34Y = wTop + ((this._startWinArea.height / 3) * 2);
+
+        // Detect window edge
+        let edge = this._edgeSize();
+        let topEdge = this._topEdgeSize();
+
+        // Default edge: need move event for more actions
+        this._edgeAction = WindowEdgeAction.NONE;
+        this._edgeGestured = false;
+
+        // Check allow resize
+        if (this._swipeIsWin && !this._isActiveWin && allowResize &&
+            this._targetWindow.allows_resize() &&
+            this._targetWindow.allows_move()) {
+            // Edge cursor position detection
+            if (this._startPos.y >= wBottom - edge) {
+                // Cursor on bottom of window
+                this._edgeAction =
+                    WindowEdgeAction.RESIZE |
+                    WindowEdgeAction.RESIZE_BOTTOM;
+
+                // 1/3 from left|right
+                if (this._startPos.x <= wThirdX) {
+                    this._edgeAction |= WindowEdgeAction.RESIZE_LEFT;
+                }
+                else if (this._startPos.x >= w34X) {
+                    this._edgeAction |= WindowEdgeAction.RESIZE_RIGHT;
+                }
+            }
+            else {
+                if (this._startPos.x <= wLeft + edge) {
+                    // Cursor on left side of window
+                    this._edgeAction =
+                        WindowEdgeAction.RESIZE |
+                        WindowEdgeAction.RESIZE_LEFT;
+                }
+                else if (this._startPos.x >= wRight - edge) {
+                    // Cursor on right side of window
+                    this._edgeAction =
+                        WindowEdgeAction.RESIZE |
+                        WindowEdgeAction.RESIZE_RIGHT;
+                }
+                if (this._isEdge(WindowEdgeAction.RESIZE)) {
+                    // 1/3 from top|bottom
+                    if (this._startPos.y <= wThirdY) {
+                        this._edgeAction |= WindowEdgeAction.RESIZE_TOP;
+                    }
+                    else if (this._startPos.y >= w34Y) {
+                        this._edgeAction |= WindowEdgeAction.RESIZE_BOTTOM;
+                    }
+                }
+            }
+        }
+        if (this._swipeIsWin && !this._isEdge(WindowEdgeAction.RESIZE)) {
+            if (allowMove && this._startPos.y <= wTop + topEdge) {
+                if (this._targetWindow.allows_move() &&
+                    !this._targetWindow.get_maximized()) {
+                    // Mouse in top side of window
+                    this._edgeAction = WindowEdgeAction.MOVE;
+                }
+            }
+        }
+
+        return this._swipeIsWin ?
+            Clutter.EVENT_STOP : Clutter.EVENT_PROPAGATE;
+    }
+
+    _swipeUpdate(dx, dy) {
+        if (!this._gesture.begin) {
+            return Clutter.EVENT_PROPAGATE;
+        }
+
+        // Moving coordinate
+        this._movePos.x += dx;
+        this._movePos.y += dy;
+
+        // Move & Resize Handler
+        if (this._isEdge(WindowEdgeAction.MOVE)) {
+            return this._swipeUpdateMove();
+        }
+        else if (this._isEdge(WindowEdgeAction.RESIZE)) {
+            return this._swipeUpdateResize(dx, dy);
+        }
+
+        // Get threshold setting
+        let threshold = this._gestureThreshold();
+        let combineTrigger = this._gestureThreshold() * 2;
+        let trigger = (threshold / 4) + 1;
+        let target = 1.00 * (trigger + (threshold * 8));
+        let absX = Math.abs(this._movePos.x);
+        let absY = Math.abs(this._movePos.y);
+
+        // Find gesture directions
+        if (this._edgeAction == WindowEdgeAction.NONE) {
+            if (absX >= trigger || absY >= trigger) {
+                if (absX > absY) {
+                    if (this._movePos.x < 0 - trigger) {
+                        this._edgeAction = WindowEdgeAction.GESTURE_LEFT;
+                    }
+                    else if (this._movePos.x > trigger) {
+                        this._edgeAction = WindowEdgeAction.GESTURE_RIGHT;
+                    }
+                    this._movePos.y = 0;
+                }
+                else {
+                    if (this._movePos.y < 0 - trigger) {
+                        this._edgeAction = WindowEdgeAction.GESTURE_UP;
+                    }
+                    else if (this._movePos.y > trigger) {
+                        this._edgeAction = WindowEdgeAction.GESTURE_DOWN;
+                        if (this._swipeIsWin) {
+                            let allowMove = this._getEnableMove();
+                            if (allowMove &&
+                                !this._targetWindow.is_fullscreen() &&
+                                !this._targetWindow.get_maximized() &&
+                                this._targetWindow.allows_move()) {
+                                this._edgeAction = WindowEdgeAction.MOVE;
+                                return this._swipeUpdateMove();
+                            }
+                        }
+                    }
+                    this._movePos.x = 0;
+                }
+                this._gesture.velocity = this._velocityInit();
+                this._velocityAppend(this._gesture.velocity, 0);
+            }
+        }
+
+        let prog = 0;
+        let vert = false;
+        let gname = "none";
+        if (this._isEdge(WindowEdgeAction.GESTURE_LEFT)) {
+            if (!this._swipeIsWin &&
+                !this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
+                log("Gesture Left 3 Finger Cancel");
+                return Clutter.EVENT_PROPAGATE;
+            }
+            let xmove = this._movePos.x + trigger;
+            if (this._isEdge(WindowEdgeAction.GESTURE_UP) ||
+                this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
+                xmove = this._movePos.x + combineTrigger;
+            }
+            if (xmove < 0) {
+                prog = Math.abs(xmove) / target;
+            }
+            gname = "LEFT";
+        }
+        else if (this._isEdge(WindowEdgeAction.GESTURE_RIGHT)) {
+            if (!this._swipeIsWin &&
+                !this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
+                return Clutter.EVENT_PROPAGATE;
+            }
+            let xmove = this._movePos.x - trigger;
+            if (this._isEdge(WindowEdgeAction.GESTURE_UP) ||
+                this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
+                xmove = this._movePos.x + combineTrigger;
+            }
+            if (xmove > 0) {
+                prog = xmove / target;
+            }
+            gname = "RIGHT";
+        }
+        else if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
+            if (!this._swipeIsWin) {
+                return Clutter.EVENT_PROPAGATE;
+            }
+            if (this._movePos.y < 0) {
+                prog = Math.abs(this._movePos.y) / target;
+            }
+            vert = true;
+            gname = "UP";
+        }
+        else if (this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
+            if (!this._swipeIsWin && this._isOnOverview()) {
+                return Clutter.EVENT_PROPAGATE;
+            }
+            if (!this._swipeIsWin) {
+                this._hooked = true;
+            }
+            if (this._movePos.y > 0) {
+                prog = this._movePos.y / target;
+            }
+            vert = true;
+            gname = "DOWN";
+        }
+
+        if (vert) {
+            if (absX >= trigger) {
+                // Combination gesture (Down + Left/Right)
+                if (this._movePos.x < 0 - combineTrigger) {
+                    this._edgeAction |= WindowEdgeAction.GESTURE_LEFT;
+                    this._gesture.velocity = this._velocityInit();
+                    this._velocityAppend(this._gesture.velocity, 0);
+                    this._movePos.y = 0;
+                    return this._swipeUpdate(0, 0);
+                }
+                else if (this._movePos.x > combineTrigger) {
+                    this._edgeAction |= WindowEdgeAction.GESTURE_RIGHT;
+                    this._gesture.velocity = this._velocityInit();
+                    this._velocityAppend(this._gesture.velocity, 0);
+                    this._movePos.y = 0;
+                    return this._swipeUpdate(0, 0);
+                }
+            }
+        }
+        else {
+            if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
+                gname = "UP+" + gname;
+
+                // Reset to single gesture
+                if (Math.abs(this._movePos.x) < combineTrigger) {
+                    this._edgeAction = WindowEdgeAction.GESTURE_UP;
+                    this._gesture.velocity = this._velocityInit();
+                    this._velocityAppend(this._gesture.velocity, 0);
+                    return this._swipeUpdate(0, 0);
+                }
+            }
+            else if (this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
+                gname = "DOWN+" + gname;
+
+                // Reset to single gesture
+                if (Math.abs(this._movePos.x) < combineTrigger) {
+                    this._edgeAction = WindowEdgeAction.GESTURE_DOWN;
+                    this._gesture.velocity = this._velocityInit();
+                    this._velocityAppend(this._gesture.velocity, 0);
+                    return this._swipeUpdate(0, 0);
+                }
+            }
+        }
+
+        // Limit progress
+        if (prog >= 1) {
+            prog = 1.0;
+        }
+
+        this._gesture.progress = prog;
+        this._velocityAppend(this._gesture.velocity,
+            this._gesture.progress);
+        log("Gesture " + gname + " = " + prog);
+        return Clutter.EVENT_STOP;
+    }
+
+    _swipeEnd() {
+        if (!this._swipeIsWin && !this._hooked) {
+            this._clearVars();
+            return Clutter.EVENT_PROPAGATE;
+        }
+
+        this._hooked = false;
+        if (!this._gesture.begin) {
+            return Clutter.EVENT_PROPAGATE;
+        }
+
+        let vel = this._velocityCalc(this._gesture.velocity);
+        log("Gesture End / Vel = " + vel);
+
+        this._clearVars();
+        return Clutter.EVENT_STOP;
+    }
+
+    // Swipe Handler
+    _swipeEventHandler(actor, event) {
+        // Only process configured finger gesture
+        // if (event.get_touchpad_gesture_finger_count()
+        //     != this._gestureNumFinger())
+        //     return Clutter.EVENT_PROPAGATE;
+
+        let numfingers = event.get_touchpad_gesture_finger_count();
+        if (numfingers != 3 && numfingers != 4) {
+            return Clutter.EVENT_PROPAGATE;
+        }
+
+        // Process gestures state
+        switch (event.get_gesture_phase()) {
+            case Clutter.TouchpadGesturePhase.BEGIN:
+                // Begin event
+                return this._swipeBegin(numfingers);
+            // return this._swipeBegin1();
+
+            case Clutter.TouchpadGesturePhase.UPDATE:
+                // Update / move event
+                let [dx, dy] = event.get_gesture_motion_delta();
+                return this._swipeUpdate(
+                    dx * this._getAcceleration(),
+                    dy * this._getAcceleration()
+                );
+            // return this._swipeUpdate1(
+            //     dx * this._getAcceleration(),
+            //     dy * this._getAcceleration()
+            // );
+        }
+        return this._swipeEnd();
+        // return this._swipeEnd1();
     }
 
     // Get Current Action Id
     _pinchGetCurrentActionId() {
-        if (this._pinch.begin && this._pinch.action != 0) {
-            if (this._pinch.action != this._pinch.action_cmp) {
-                this._pinch.action_id = this._actionIdGet(
-                    (this._pinch.fingers == 3) ?
-                        this._pinch.action + 5 :
-                        this._pinch.action + 7
+        if (this._gesture.begin && this._gesture.action != 0) {
+            if (this._gesture.action != this._gesture.action_cmp) {
+                this._gesture.action_id = this._actionIdGet(
+                    (this._gesture.fingers == 3) ?
+                        this._gesture.action + 5 :
+                        this._gesture.action + 7
                 );
-                this._pinch.action_cmp = this._pinch.action;
+                this._gesture.action_cmp = this._gesture.action;
             }
-            return this._pinch.action_id;
+            return this._gesture.action_id;
         }
         return 0;
     }
 
     // Update Pinch
     _pinchUpdate(pinch_scale) {
-        if (this._pinch.begin) {
+        if (this._gesture.begin) {
             let pIn = (this._getPinchInScale() / 100.0);
             let pOut = (this._getPinchOutScale() / 100.0);
 
@@ -1357,46 +1856,65 @@ class Manager {
                 if (pinch_scale < pIn) {
                     pinch_scale = pIn;
                 }
-                this._pinch.action = 1;
-                this._pinch.progress = (1.0 - pinch_scale) / (1.0 - pIn);
+                this._gesture.action = 1;
+                this._gesture.progress = (1.0 - pinch_scale) / (1.0 - pIn);
             }
             else if (pinch_scale > 1.0) {
                 if (pinch_scale > pOut) {
                     pinch_scale = pOut;
                 }
-                this._pinch.action = 2;
-                this._pinch.progress = (pinch_scale - 1.0) / (pOut - 1.0);
+                this._gesture.action = 2;
+                this._gesture.progress = (pinch_scale - 1.0) / (pOut - 1.0);
             }
             else {
-                this.pinch.action = 0;
-                this._pinch.progress = 0;
+                this._gesture.action = 0;
+                this._gesture.progress = 0;
             }
 
-            if (this._pinch.action_cmp &&
-                (this._pinch.action != this._pinch.action_cmp)) {
+            if (this._gesture.action_cmp &&
+                (this._gesture.action != this._gesture.action_cmp)) {
                 // Send Cancel State
                 let aid = this._actionIdGet(
-                    (this._pinch.fingers == 3) ?
-                        this._pinch.action_cmp + 2 :
-                        this._pinch.action_cmp + 4
+                    (this._gesture.fingers == 3) ?
+                        this._gesture.action_cmp + 2 :
+                        this._gesture.action_cmp + 4
                 );
                 if (aid) {
                     this._runAction(aid, 1, 0);
                 }
 
                 // Reset velocity
-                this._pinch.velocity = this._velocityInit();
-                this._velocityAppend(this._pinch.velocity, 0);
+                this._gesture.velocity = this._velocityInit();
+                this._velocityAppend(this._gesture.velocity, 0);
             }
-            this._velocityAppend(this._pinch.velocity, this._pinch.progress);
+            this._velocityAppend(this._gesture.velocity,
+                this._gesture.progress);
 
             let action_id = this._pinchGetCurrentActionId();
             if (action_id) {
                 this._runAction(action_id, 0,
-                    this._pinch.progress
+                    this._gesture.progress
                 );
             }
         }
+        return Clutter.EVENT_STOP;
+    }
+
+    // Pinch Begin
+    _pinchBegin(numfingers) {
+        // Pinch Variables
+        this._gesture.begin = true;
+        this._gesture.fingers = numfingers;
+        this._gesture.progress = 0;
+
+        // Action Variables
+        this._gesture.action = 0;
+        this._gesture.action_cmp = 0;
+        this._gesture.action_id = 0;
+
+        // Velocity Variables
+        this._gesture.velocity = this._velocityInit();
+        this._velocityAppend(this._gesture.velocity, 0);
         return Clutter.EVENT_STOP;
     }
 
@@ -1404,13 +1922,13 @@ class Manager {
     _pinchEnd() {
         let action_id = this._pinchGetCurrentActionId();
         if (action_id) {
-            if (this._pinch.progress < 1.0) {
+            if (this._gesture.progress < 1.0) {
                 // Fling Velocity
-                let vel = this._velocityCalc(this._pinch.velocity);
+                let vel = this._velocityCalc(this._gesture.velocity);
                 if (vel > 0.001) {
                     let me = this;
                     this._velocityFling(vel,
-                        this._pinch.progress,
+                        this._gesture.progress,
                         1.0, 30,
                         function (state, prog) {
                             me._runAction(action_id, state, prog);
@@ -1420,7 +1938,7 @@ class Manager {
                     return Clutter.EVENT_STOP;
                 }
             }
-            this._runAction(action_id, 1, this._pinch.progress);
+            this._runAction(action_id, 1, this._gesture.progress);
         }
 
         this._clearVars();
@@ -1441,66 +1959,45 @@ class Manager {
         // Process gestures state
         switch (event.get_gesture_phase()) {
             case Clutter.TouchpadGesturePhase.BEGIN:
-                // Pinch Variables
-                this._pinch.begin = true;
-                this._pinch.fingers = numfingers;
-                this._pinch.progress = 0;
-
-                // Action Variables
-                this._pinch.action = 0;
-                this._pinch.action_cmp = 0;
-                this._pinch.action_id = 0;
-
-                // Velocity Variables
-                this._pinch.velocity = this._velocityInit();
-                this._velocityAppend(this._pinch.velocity, 0);
-                return Clutter.EVENT_STOP;
-
+                return this._pinchBegin(numfingers);
             case Clutter.TouchpadGesturePhase.UPDATE:
                 return this._pinchUpdate(pinch_scale);
-
-            default:
-                return this._pinchEnd();
         }
-
-        return Clutter.EVENT_STOP;
+        return this._pinchEnd();
     }
 
     // Touch Event Handler
-    _touchEvent(actor, event) {
+    _touchpadEvent(actor, event) {
 
-        // Only process swipe event
+        // Process pinch
         if (event.type() == Clutter.EventType.TOUCHPAD_PINCH)
             return this._pinchEventHandler(actor, event);
 
-        // Only process swipe event
-        if (event.type() != Clutter.EventType.TOUCHPAD_SWIPE)
-            return Clutter.EVENT_PROPAGATE;
+        // Process swipe
+        if (event.type() == Clutter.EventType.TOUCHPAD_SWIPE)
+            return this._swipeEventHandler(actor, event);
 
-        // Only process configured finger gesture
-        if (event.get_touchpad_gesture_finger_count()
-            != this._gestureNumFinger())
-            return Clutter.EVENT_PROPAGATE;
 
-        // Process gestures state
-        switch (event.get_gesture_phase()) {
-            case Clutter.TouchpadGesturePhase.BEGIN:
-                // Begin event
-                return this._touchStarted();
+        return Clutter.EVENT_PROPAGATE;
+    }
 
-            case Clutter.TouchpadGesturePhase.UPDATE:
-                // Update / move event
-                let [dx, dy] = event.get_gesture_motion_delta();
-                return this._touchUpdate(
-                    dx * this._getAcceleration(),
-                    dy * this._getAcceleration()
-                );
+    // Get Action Id
+    _actionIdGet(type) {
+        let cfg_name = "";
+        switch (type) {
+            case 1: cfg_name = "swipe4-left"; break;
+            case 2: cfg_name = "swipe4-right"; break;
+            case 3: cfg_name = "swipe3-down"; break;
+            case 4: cfg_name = "swipe3-left"; break;
+            case 5: cfg_name = "swipe3-right"; break;
 
-            default:
-                // Cancel / end event
-                return this._touchEnd();
+            case 6: cfg_name = "pinch3-in"; break;
+            case 7: cfg_name = "pinch3-out"; break;
+            case 8: cfg_name = "pinch4-in"; break;
+            case 9: cfg_name = "pinch4-out"; break;
+            default: return 0;
         }
-        return Clutter.EVENT_STOP;
+        return this._settings.get_int(cfg_name);
     }
 
     // Run Action
@@ -2253,17 +2750,17 @@ class Manager {
         stk.emit('begin',global.display.get_primary_monitor());
         stk.emit('update',0.5);
         stk.emit('end',100,1.0);
-
+ 
         Main.wm._workspaceAnimation._swipeTracker.orientation=Clutter.Orientation.HORIZONTAL;
         Main.wm._workspaceAnimation._swipeTracker.emit('begin',global.display.get_primary_monitor());
         Main.wm._workspaceAnimation._swipeTracker.emit('update',-0.5);
         Main.wm._workspaceAnimation._swipeTracker.emit('end',100,-1.0);
-
+ 
         Main.wm._workspaceAnimation._swipeTracker.orientation=Clutter.Orientation.HORIZONTAL;
         Main.wm._workspaceAnimation._swipeTracker.emit('begin',global.display.get_primary_monitor());
         Main.wm._workspaceAnimation._swipeTracker.emit('update',0.5);
         Main.wm._workspaceAnimation._swipeTracker.emit('end',100,1.0);
-
+ 
         */
     }
 }
