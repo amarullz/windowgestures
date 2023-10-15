@@ -2172,7 +2172,7 @@ class Manager {
                         if (progress >= 1.0) {
                             this._sendKeyPress([keyId]);
                         }
-                        ui.aniRelease();
+                        ui.aniRelease(progress);
                         this._actionWidgets[kidw] = ui = null;
                     }
                 }
