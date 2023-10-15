@@ -257,8 +257,8 @@ class Manager {
             if (progress > 0.2) {
                 ui.ease({
                     opacity: 0,
-                    scale_x: 0.8,
-                    scale_y: 0.8,
+                    scale_x: 0,
+                    scale_y: 0,
                     duration: Math.round(250 * progress),
                     mode: Clutter.AnimationMode.EASE_OUT_QUAD,
                     onStopped: () => {
