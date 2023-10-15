@@ -27,6 +27,22 @@
     background-color: rgba(255, 50, 50, .6);
 }
 
+.wgs-indicator-keys {
+    background-color: rgba(40, 40, 40, 0.75);
+    width: 128px;
+    height: 128px;
+    border-radius: 64px;
+    text-align: center;
+}
+
+.wgs-indicator-keys .wgs-widget-icon {
+    icon-size: 64px;
+    width: 64px;
+    height: 64px;
+    margin: 32px;
+    color: #fff;
+}
+
 .wgs-indicator-backforward {
     border: 5px solid #249;
     background-color: #fff;
@@ -34,6 +50,7 @@
     height: 64px;
     border-radius: 32px;
 }
+
 
 .wgs-indicator-backforward .wgs-widget-icon {
     icon-size: 32px;

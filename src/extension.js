@@ -1315,10 +1315,16 @@ class Manager {
     _actionIdGet(type) {
         let cfg_name = "";
         switch (type) {
-            case 3: cfg_name = "pinch3-in"; break;
-            case 4: cfg_name = "pinch3-out"; break;
-            case 5: cfg_name = "pinch4-in"; break;
-            case 6: cfg_name = "pinch4-out"; break;
+            case 1: cfg_name = "swipe4-left"; break;
+            case 2: cfg_name = "swipe4-right"; break;
+            case 3: cfg_name = "swipe3-down"; break;
+            case 4: cfg_name = "swipe3-left"; break;
+            case 5: cfg_name = "swipe3-right"; break;
+
+            case 6: cfg_name = "pinch3-in"; break;
+            case 7: cfg_name = "pinch3-out"; break;
+            case 8: cfg_name = "pinch4-in"; break;
+            case 9: cfg_name = "pinch4-out"; break;
             default: return 0;
         }
         return this._settings.get_int(cfg_name);
@@ -1330,8 +1336,8 @@ class Manager {
             if (this._pinch.action != this._pinch.action_cmp) {
                 this._pinch.action_id = this._actionIdGet(
                     (this._pinch.fingers == 3) ?
-                        this._pinch.action + 2 :
-                        this._pinch.action + 4
+                        this._pinch.action + 5 :
+                        this._pinch.action + 7
                 );
                 this._pinch.action_cmp = this._pinch.action;
             }
@@ -2082,24 +2088,29 @@ class Manager {
                 this._actionWidgets[kidw] = ui = null;
             }
         }
-        else if (id >= 10 && id <= 14) {
+        else if (id >= 10 && id <= 17) {
             //
             // MEDIA & BRIGHTNESS
             //
             const keyList = [
+                Clutter.KEY_MonBrightnessUp,
+                Clutter.KEY_MonBrightnessDown,
                 Clutter.KEY_AudioRaiseVolume,
                 Clutter.KEY_AudioLowerVolume,
                 Clutter.KEY_AudioMute,
-                Clutter.KEY_MonBrightnessUp,
-                Clutter.KEY_MonBrightnessDown,
+                Clutter.KEY_AudioPlay,
+                Clutter.KEY_AudioNext,
+                Clutter.KEY_AudioPrev
             ];
             let wid = 'keys_' + id;
             let cid = 'keysn_' + id;
             let keyId = keyList[id - 10];
-            let isRepeat = (id != 12);
+            let isRepeat = (id < 14);
+            let kidw = 'keyaction_' + id;
+            let ui = this._actionWidgets[kidw];
 
-            if (!state && (progress >= 1)) {
-                if (isRepeat) {
+            if (isRepeat) {
+                if (!state && (progress >= 1)) {
                     if (!this._actionWidgets[wid]) {
                         let me = this;
                         this._actionWidgets[cid] = 0;
@@ -2117,22 +2128,59 @@ class Manager {
                         );
                     }
                 }
-                else {
-                    if (!this._actionWidgets[wid]) {
-                        // Non-Repeat
-                        this._actionWidgets[wid] = -1;
-                        this._sendKeyPress([keyId]);
+                if (state) {
+                    if (this._actionWidgets[wid]) {
+                        this.clearInterval(this._actionWidgets[wid]);
                     }
+                    this._actionWidgets[wid] = 0;
+                    this._actionWidgets[cid] = 0;
+                }
+            }
+            else {
+                if (!ui) {
+                    const iconlist = [
+                        'audio-volume-muted-symbolic',
+                        'media-playback-start-symbolic',
+                        'media-skip-forward-symbolic',
+                        'media-skip-backward-symbolic'
+                    ];
+                    let display = global.get_display();
+                    let mrect = display.get_monitor_geometry(
+                        display.get_primary_monitor()
+                    );
+                    ui = this._createUi(
+                        'wgs-indicator-keys',
+                        mrect.x + (mrect.width / 2) - 64,
+                        mrect.y + (mrect.height / 2) - 64,
+                        128, 128,
+                        iconlist[id - 14],
+                        null
+                    );
+                    ui.opacity = 0;
+                    ui.scale_x = ui.scale_y = 0;
+                    this._actionWidgets[kidw] = ui;
+                }
+
+                // Execute Progress
+                if (ui && ui != -1) {
+                    if (!state) {
+                        ui.scale_x = ui.scale_y = progress;
+                        ui.opacity = Math.round(255 * progress);
+                    }
+                    else {
+                        // Action is executed
+                        if (progress >= 1.0) {
+                            this._sendKeyPress([keyId]);
+                        }
+                        ui.aniRelease();
+                        this._actionWidgets[kidw] = ui = null;
+                    }
+                }
+                else if (state) {
+                    this._actionWidgets[kidw] = ui = null;
                 }
             }
 
-            if (state) {
-                if (isRepeat && this._actionWidgets[wid]) {
-                    this.clearInterval(this._actionWidgets[wid]);
-                }
-                this._actionWidgets[wid] = 0;
-                this._actionWidgets[cid] = 0;
-            }
         }
 
 
@@ -2141,7 +2189,7 @@ class Manager {
         //
         // TODO: Change Below Actions
         //
-        else if (id == 15) {
+        else if (id == 18) {
             if (this._isOnOverview()) {
                 // Ignore on overview
                 return;
@@ -2153,7 +2201,7 @@ class Manager {
             // ALT+TAB
             this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_Tab]);
         }
-        else if (id == 16) {
+        else if (id == 19) {
             if (!state || progress < 1.0) {
                 // Ignore if non end
                 return;
@@ -2161,7 +2209,7 @@ class Manager {
             // Overview (Super)
             this._sendKeyPress([Clutter.KEY_Super_L]);
         }
-        else if (id == 17) {
+        else if (id == 20) {
             if (!state || progress < 1.0) {
                 // Ignore if non end
                 return;
@@ -2169,7 +2217,7 @@ class Manager {
             // Show Apps (Super+A)
             this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_A + _LCASE]);
         }
-        else if (id == 18) {
+        else if (id == 21) {
             if (!state || progress < 1.0) {
                 // Ignore if non end
                 return;
@@ -2178,7 +2226,7 @@ class Manager {
             Main.wm._toggleQuickSettings();
             // this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_S + _LCASE]);
         }
-        else if (id == 19) {
+        else if (id == 22) {
             if (!state || progress < 1.0) {
                 // Ignore if non end
                 return;
@@ -2187,7 +2235,7 @@ class Manager {
             Main.wm._toggleCalendar();
             // this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_V + _LCASE]);
         }
-        else if (id == 20) {
+        else if (id == 23) {
             if (!state || progress < 1.0) {
                 // Ignore if non end
                 return;

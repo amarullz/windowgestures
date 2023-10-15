@@ -36,128 +36,150 @@ export default class extends ExtensionPreferences {
         const gestures = new Adw.PreferencesGroup({ title: "Gestures" });
         this._createSwitch(
             gestures, "three-finger",
-            "Use 3 Fingers",
-            "If true, window gestures will use three fingers, and workspace will use four finger"
+            "Switch 3 and 4 fingers",
+            ""
+        );
+        this._createSwitch(
+            gestures, "pinch-enable",
+            "Enable pinch gestures",
+            ""
         );
         this._createSwitch(
             gestures, "horiz-swap-switch",
-            "Horizontal Swipe Always Switch Windows",
+            "Horizontal swipe for switch windows",
             "If true, Horizontal swipe will always switching windows just like swiping outside window area",
         );
         this._createSwitch(
             gestures, "use-active-window",
-            "Handle Active Window",
+            "Always use active window",
             "If true, gesture will control active window rather than window on current pointer. This will disable resize function"
         );
+
 
         // Function Settings
         const fn = new Adw.PreferencesGroup({ title: "Functions" });
         this._createSwitch(
             fn, "fn-resize",
-            "Enable Resize",
-            "Enable resize window if cursor on resize edges"
+            "Enable resize window",
+            ""
         );
         this._createSwitch(
             fn, "fn-move",
-            "Enable Move",
-            "Enable move function"
+            "Enable move window",
+            ""
         );
         this._createSwitch(
             fn, "fn-fullscreen",
-            "Enable Fullscreen",
-            "Enable fullscreen function"
+            "Enable fullscreen",
+            ""
         );
         this._createSwitch(
             fn, "fn-maximized-snap",
-            "Enable Maximized Snap",
-            "Enable swipe up then left/right gesture to maximized to side"
+            "Enable maximized window snap",
+            ""
         );
         this._createSwitch(
             fn, "fn-move-snap",
-            "Enable Move Snap",
-            "Enable snapping window when moving"
+            "Enable move window snap",
+            ""
         );
+
 
         // Pinch Settings
-        const pinch_actions = [
+        const action_list = [
             "Disable",
-            "Minimize Window",
-            "Close Window",
-            "Show Desktop",
+            "Minimize window",      // 1
+            "Close window",         // 2
+            "Show desktop",         // 3
 
-            "Next Window", // 4
-            "Previous Window",
+            "Next window",          // 4
+            "Previous window",      // 5
 
-            "Move Window Left Workspace", // 6
-            "Move Window Right Workspace",
+            "Send window left",     // 6
+            "Send window right",    // 7
 
-            "Back",  //8
-            "Forward",
-            "Volume Up", // 10
-            "Volume Down",
-            "Mute",
-            "Brightness Up", // 13
-            "Brightness Down",
+            "Back",                 // 8
+            "Forward",              // 9
+            "Brightness up",        // 10
+            "Brightness down",      // 11
+            "Volume up",            // 12
+            "Volume down",          // 13
+            "Mute",                 // 14
+            "Media play",           // 15
+            "Media next",           // 16
+            "Media previous",       // 17
 
-            "Alt+Tab Switch", // 15
-            "Overview (Super)",
-            "App (Super+A)",
-            "Quick Settings",
-            "Notification",
-            "Run (Alt+F2)",
+
+            "Alt+Tab switch",       // 18
+            "Overview",             // 19
+            "Application Grid",     // 20
+            "Quick settings",       // 21
+            "Notification",         // 22
+            "Run (Alt+F2)",         // 23
 
         ];
-        const pinch = new Adw.PreferencesGroup({ title: "Pinch" });
-        this._createSwitch(
-            pinch, "pinch-enable",
-            "Enable Pinch",
-            "Enable pinch tracking"
-        );
-        this._createCombo(pinch, "pinch3-in",
-            "Pinch-In 3 Fingers", "", pinch_actions);
-        this._createCombo(pinch, "pinch3-out",
-            "Pinch-Out 3 Fingers", "", pinch_actions);
-        this._createCombo(pinch, "pinch4-in",
-            "Pinch-In 4 Fingers", "", pinch_actions);
-        this._createCombo(pinch, "pinch4-out",
-            "Pinch-Out 4 Fingers", "", pinch_actions);
 
-        this._createSpin(pinch, "pinch-in-scale",
-            "Pinch-In Trigger Scale Perentage",
-            "Trigger pinch-in if pinch scale lower than this value",
-            30, 80, 5);
-        this._createSpin(pinch, "pinch-out-scale",
-            "Pinch-Out Trigger Scale Perentage",
-            "Trigger pinch-out if pinch scale bigger than this value",
-            120, 200, 5);
+        const act = new Adw.PreferencesGroup({ title: "Actions" });
+        this._createCombo(act, "swipe4-left",
+            "Swipe left (4 fingers)", "", action_list);
+        this._createCombo(act, "swipe4-right",
+            "Swipe right (4 fingers)", "", action_list);
+
+        this._createCombo(act, "swipe3-down",
+            "Swipe down (3 fingers)", "", action_list);
+        this._createCombo(act, "swipe3-left",
+            "Swipe left (3 fingers)", "", action_list);
+        this._createCombo(act, "swipe3-right",
+            "Swipe right (3 fingers)", "", action_list);
+
+        this._createCombo(act, "pinch3-in",
+            "Pinch-in 3 fingers", "", action_list);
+        this._createCombo(act, "pinch3-out",
+            "Pinch-out 3 fingers", "", action_list);
+        this._createCombo(act, "pinch4-in",
+            "Pinch-in 4 fingers", "", action_list);
+        this._createCombo(act, "pinch4-out",
+            "Pinch-out 4 fingers", "", action_list);
+
+
 
 
         // Tweaks Settings
         const tweaks = new Adw.PreferencesGroup({ title: "Tweaks" });
         this._createSpin(tweaks, "edge-size",
-            "Edge Size for Resize",
+            "Resize edge size",
             "Number of pixel from window egdes to determine resize action",
             16, 96, 4);
 
         this._createSpin(tweaks, "top-edge-size",
-            "Title Edge size",
+            "Title edge size",
             "Number of pixel from top of window to determine move action",
             16, 96, 4);
 
         this._createSpin(tweaks, "gesture-threshold",
-            "Gesture Threshold",
+            "Gesture threshold",
             "",
             16, 64, 4);
 
         this._createSpin(tweaks, "gesture-cancel-threshold",
-            "Gesture Cancel Threshold",
+            "Gesture cancel threshold",
             "",
             4, 32, 1);
 
         this._createSpin(tweaks, "gesture-acceleration",
-            "Gesture Acceleration",
+            "Gesture acceleration",
             "",
             10, 25, 1);
+
+        this._createSpin(tweaks, "pinch-in-scale",
+            "Pinch in scale target",
+            "",
+            30, 80, 5);
+
+        this._createSpin(tweaks, "pinch-out-scale",
+            "Pinch out scale target",
+            "",
+            120, 200, 5);
 
 
         // About
@@ -195,7 +217,7 @@ export default class extends ExtensionPreferences {
         const page = new Adw.PreferencesPage();
         page.add(gestures);
         page.add(fn);
-        page.add(pinch);
+        page.add(act);
         page.add(tweaks);
         page.add(about);
         page.add(gnuSoftwareGroup);
@@ -245,6 +267,29 @@ export default class extends ExtensionPreferences {
             this.getSettings().set_int(bind, widget.selected);
         });
         parent.add(comboRow);
+    }
+
+    /* Create Drop Down Row */
+    _createDropDown(parent, bind, title, subtitle, items) {
+        const itemStr = new Gtk.StringList();
+        for (var i = 0; i < items.length; i++) {
+            itemStr.append(items[i]);
+        }
+        const dropDownMenu = new Gtk.DropDown({
+            valign: Gtk.Align.CENTER,
+            model: itemStr,
+            selected: this.getSettings().get_int(bind),
+        });
+        const dropDownRow = new Adw.ActionRow({
+            title: title,
+            subtitle: subtitle,
+            activatable_widget: dropDownMenu,
+        });
+        dropDownRow.add_suffix(dropDownMenu);
+        dropDownMenu.connect('notify::selected', widget => {
+            this.getSettings().set_int(bind, widget.selected);
+        });
+        parent.add(dropDownRow);
     }
 
     /* Create Link */

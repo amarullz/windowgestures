@@ -49,18 +49,50 @@
             <default>true</default>
             <summary>Enable Pinch</summary>
         </key>
-        <key type="i" name="pinch3-in">
+
+
+
+        <key type="i" name="swipe4-left">
+            <default>7</default>
+            <summary>Swipe 4 Fingers Left</summary>
+            <range min="0" max="30"/>
+        </key>
+        <key type="i" name="swipe4-right">
+            <default>6</default>
+            <summary>Swipe 4 Fingers Right</summary>
+            <range min="0" max="30"/>
+        </key>
+        <key type="i" name="swipe3-down">
             <default>3</default>
+            <summary>Swipe 3 Fingers Down</summary>
+            <range min="0" max="30"/>
+        </key>
+        <key type="i" name="swipe3-left">
+            <default>5</default>
+            <summary>Swipe 3 Fingers Left</summary>
+            <range min="0" max="30"/>
+        </key>
+        <key type="i" name="swipe3-right">
+            <default>4</default>
+            <summary>Swipe 3 Fingers Right</summary>
+            <range min="0" max="30"/>
+        </key>
+
+
+
+        <key type="i" name="pinch3-in">
+            <default>1</default>
             <summary>Pinch-In 3 Fingers</summary>
             <range min="0" max="30"/>
         </key>
         <key type="i" name="pinch3-out">
-            <default>0</default>
+            <default>3</default>
             <summary>Pinch-Out 3 Fingers</summary>
             <range min="0" max="30"/>
         </key>
+        
         <key type="i" name="pinch4-in">
-            <default>1</default>
+            <default>0</default>
             <summary>Pinch-In 4 Fingers</summary>
             <range min="0" max="30"/>
         </key>
@@ -69,6 +101,8 @@
             <summary>Pinch-Out 4 Fingers</summary>
             <range min="0" max="30"/>
         </key>
+
+
 
         <key type="i" name="pinch-in-scale">
             <default>50</default>
