@@ -93,8 +93,35 @@ class Manager {
         this._actionWidgets = {};
     }
 
+    // Clear potentially running timeout/interval
+    destroyTimers() {
+        if (this._holdTo) {
+            // hold waiter
+            clearTimeout(this._holdTo);
+            this._holdTo = null;
+        }
+        if (this._actionWidgets.resetWinlist) {
+            // Alt+Tab timeout
+            clearTimeout(this._actionWidgets.resetWinlist);
+            this._actionWidgets.resetWinlist = null;
+        }
+        if (this._keyRepeatInterval) {
+            // Key repeat interval
+            clearInterval(this._keyRepeatInterval);
+            this._keyRepeatInterval = null;
+        }
+        if (this._flingInterval) {
+            // Kinetic interval
+            clearInterval(this._flingInterval);
+            this._flingInterval = null;
+        }
+    }
+
     // Cleanup Extension
     destroy() {
+        // clear timers
+        this.destroyTimers();
+
         // restore default GNOME 3 fingers gesture
         this._restoreFingerCountFlip();
 
@@ -365,33 +392,53 @@ class Manager {
         const period = lastTime - firstTime;
         return totalDelta / period;
     }
+    _velocityFlingHandler(me) {
+        if (me._velocityFlingQueue.length == 0) {
+            clearInterval(me._flingInterval);
+            me._flingInterval = 0;
+            return;
+        }
+        let now = me._velocityFlingQueue[0];
+        let clearIt = false;
+        now.target += now.v * 2;
+        now.v *= 0.98;
+        now.n++;
+        if (me._velocityFlingQueue.length != 1) {
+            // Another fling called
+            now.cb(1, target);
+            clearIt = true;
+        }
+        else if (now.target >= now.max || now.n >= now.maxframe) {
+            if (now.target >= now.max) {
+                now.target = now.max;
+            }
+            now.cb(1, now.target);
+            clearIt = true;
+        }
+        else {
+            now.cb(0, now.target);
+        }
+        if (clearIt) {
+            me._velocityFlingQueue.splice(0, 1);
+        }
+    }
     _velocityFling(vel, curr, max, maxframe, cb) {
-        let ctime = this._tick();
-        this._velocityFlingTime = ctime;
-        let n = 0;
-        let target = curr;
-        let v = vel;
-        let me = this;
-        let iv = setInterval(function () {
-            target += v * 2;
-            v *= 0.98;
-            n++;
-            if (me._velocityFlingTime != ctime) {
-                // Another fling called
-                cb(1, target);
-                clearInterval(iv);
-            }
-            else if (target >= max || n >= maxframe) {
-                if (target >= max) {
-                    target = max;
-                }
-                cb(1, target);
-                clearInterval(iv);
-            }
-            else {
-                cb(0, target);
-            }
-        }, 4);
+        if (!this._velocityFlingQueue) {
+            this._velocityFlingQueue = [];
+        }
+        this._velocityFlingQueue.push({
+            target: curr,
+            v: vel,
+            max: max,
+            maxframe: maxframe,
+            cb: cb,
+            n: 0
+        });
+        if (!this._flingInterval) {
+            this._flingInterval = setInterval(
+                this._velocityFlingHandler, 4, this
+            );
+        }
     }
     _tick() {
         return new Date().getTime();
@@ -1808,9 +1855,9 @@ class Manager {
                 let wins = null;
 
                 // Cancel cache win timeout
-                if (this._actionWidgets.cacheWinTimeout) {
-                    clearTimeout(this._actionWidgets.cacheWinTimeout);
-                    this._actionWidgets.cacheWinTimeout = 0;
+                if (this._actionWidgets.resetWinlist) {
+                    clearTimeout(this._actionWidgets.resetWinlist);
+                    this._actionWidgets.resetWinlist = 0;
                 }
                 // Get cached window list
                 if (this._actionWidgets.cacheWinTabList) {
@@ -1909,11 +1956,11 @@ class Manager {
 
                     // Clear cache after timeout
                     let me = this;
-                    this._actionWidgets.cacheWinTimeout = setTimeout(
+                    this._actionWidgets.resetWinlist = setTimeout(
                         function () {
                             me._actionWidgets.cacheWinTabList = null;
-                            clearTimeout(me._actionWidgets.cacheWinTimeout);
-                            me._actionWidgets.cacheWinTimeout = 0;
+                            clearTimeout(me._actionWidgets.resetWinlist);
+                            me._actionWidgets.resetWinlist = 0;
                         }, 1000
                     );
                 }
@@ -2149,12 +2196,11 @@ class Manager {
 
             if (isRepeat) {
                 if (!state && (progress >= 1)) {
-                    if (!this._actionWidgets[wid]) {
-                        let me = this;
+                    if (!this._keyRepeatInterval) {
                         this._actionWidgets[cid] = 0;
                         this._sendKeyPress([keyId]);
-                        this._actionWidgets[wid] = setInterval(
-                            function () {
+                        this._keyRepeatInterval = setInterval(
+                            function (me, cid, keyId) {
                                 if (me._actionWidgets[cid] >= 5) {
                                     me._sendKeyPress([keyId]);
                                 }
@@ -2162,15 +2208,16 @@ class Manager {
                                     me._actionWidgets[cid]++;
                                 }
                             },
-                            100
+                            100,
+                            this, cid, keyId
                         );
                     }
                 }
                 if (state) {
-                    if (this._actionWidgets[wid]) {
-                        clearInterval(this._actionWidgets[wid]);
+                    if (this._keyRepeatInterval) {
+                        clearInterval(this._keyRepeatInterval);
                     }
-                    this._actionWidgets[wid] = 0;
+                    this._keyRepeatInterval = 0;
                     this._actionWidgets[cid] = 0;
                 }
             }
