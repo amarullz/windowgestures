@@ -18,9 +18,7 @@
 
 import Clutter from 'gi://Clutter';
 import Meta from 'gi://Meta';
-import GLib from 'gi://GLib';
 import St from 'gi://St';
-// import GObject from 'gi://GObject';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -374,26 +372,26 @@ class Manager {
         let target = curr;
         let v = vel;
         let me = this;
-        let iv = this.setInterval(function () {
-            target += v * 2;
+        let iv = setInterval(function () {
+            target += v * 3;
             v *= 0.98;
             n++;
             if (me._velocityFlingTime != ctime) {
                 // Another fling called
                 cb(1, target);
-                me.clearInterval(iv);
+                clearInterval(iv);
             }
             else if (target >= max || n >= maxframe) {
                 if (target >= max) {
                     target = max;
                 }
                 cb(1, target);
-                me.clearInterval(iv);
+                clearInterval(iv);
             }
             else {
                 cb(0, target);
             }
-        }, 4);
+        }, 5);
     }
     _tick() {
         return new Date().getTime();
@@ -550,7 +548,7 @@ class Manager {
         if (!this._isActiveWin) {
             // Move only if not use active window
             this._virtualTouchpad.notify_relative_motion(
-                global.get_current_time(), x, y
+                Meta.CURRENT_TIME, x, y
             );
         }
     }
@@ -584,7 +582,7 @@ class Manager {
             .get_neighbor(moveRight ? Meta.MotionDirection.RIGHT :
                 Meta.MotionDirection.LEFT);
         this._targetWindow.change_workspace(tw);
-        this._targetWindow.activate(global.get_current_time());
+        this._targetWindow.activate(Meta.CURRENT_TIME);
     }
 
     // Insert new workspace
@@ -594,7 +592,7 @@ class Manager {
         if (!Meta.prefs_get_dynamic_workspaces()) {
             return -1;
         }
-        wm.append_new_workspace(false, global.get_current_time());
+        wm.append_new_workspace(false, Meta.CURRENT_TIME);
         let windows = global.get_window_actors().map(a => a.meta_window);
         windows.forEach(window => {
             if (chkwin && chkwin == window)
@@ -612,10 +610,10 @@ class Manager {
         });
         if (chkwin) {
             wm.get_workspace_by_index(pos + 1).activate(
-                global.get_current_time()
+                Meta.CURRENT_TIME
             );
             chkwin.change_workspace_by_index(pos, true);
-            this._targetWindow.activate(global.get_current_time());
+            this._targetWindow.activate(Meta.CURRENT_TIME);
         }
         return pos;
     }
@@ -653,31 +651,9 @@ class Manager {
         // Activate window if not focused yet
         if (!this._targetWindow.has_focus()) {
             this._targetWindow.activate(
-                global.get_current_time()
+                Meta.CURRENT_TIME
             );
         }
-    }
-
-    setInterval(func, delay, ...args) {
-        return GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
-            func(...args);
-            return GLib.SOURCE_CONTINUE;
-        });
-    }
-
-    setTimeout(func, delay, ...args) {
-        return GLib.timeout_add(GLib.PRIORITY_DEFAULT, delay, () => {
-            func(...args);
-            return GLib.SOURCE_REMOVE;
-        });
-    };
-
-    clearInterval(id) {
-        GLib.source_remove(id);
-    }
-
-    clearTimeout(id) {
-        GLib.source_remove(id);
     }
 
     // Swipe window move handler
@@ -1455,7 +1431,7 @@ class Manager {
         if (isWin && this._getTapHoldMove()) {
             if (state) {
                 let me = this;
-                this._holdTo = this.setTimeout(function () {
+                this._holdTo = setTimeout(function () {
                     me._holdTo = 0;
                     let activeWin = null;
                     if (!me._getUseActiveWindow()) {
@@ -1466,7 +1442,7 @@ class Manager {
                     }
                     if (activeWin) {
                         activeWin.activate(
-                            global.get_current_time()
+                            Meta.CURRENT_TIME
                         );
                         me._tapHold = numfingers;
                         me._tapHoldWin = activeWin;
@@ -1495,7 +1471,7 @@ class Manager {
             }
             else {
                 if (this._holdTo) {
-                    this.clearTimeout(this._holdTo);
+                    clearTimeout(this._holdTo);
                 }
                 this._holdTo = 0;
             }
@@ -1708,7 +1684,7 @@ class Manager {
                                     opacity: 0
                                 });
                                 activeWin.delete(
-                                    global.get_current_time()
+                                    Meta.CURRENT_TIME
                                 );
                                 activeWin = null;
                             }
@@ -1833,7 +1809,7 @@ class Manager {
 
                 // Cancel cache win timeout
                 if (this._actionWidgets.cacheWinTimeout) {
-                    this.clearTimeout(this._actionWidgets.cacheWinTimeout);
+                    clearTimeout(this._actionWidgets.cacheWinTimeout);
                     this._actionWidgets.cacheWinTimeout = 0;
                 }
                 // Get cached window list
@@ -1884,7 +1860,7 @@ class Manager {
                 else {
                     if ((progress > 0.8) || ui.lstate) {
                         ui.into.activate(
-                            global.get_current_time()
+                            Meta.CURRENT_TIME
                         );
                         if (prv) {
                             this._actionWidgets.cacheWinTabList.unshift(
@@ -1932,12 +1908,13 @@ class Manager {
                     this._actionWidgets[wid] = null;
 
                     // Clear cache after timeout
-                    this._actionWidgets.cacheWinTimeout = this.setTimeout(
-                        function (me) {
+                    let me = this;
+                    this._actionWidgets.cacheWinTimeout = setTimeout(
+                        function () {
                             me._actionWidgets.cacheWinTabList = null;
-                            me.clearTimeout(me._actionWidgets.cacheWinTimeout);
+                            clearTimeout(me._actionWidgets.cacheWinTimeout);
                             me._actionWidgets.cacheWinTimeout = 0;
-                        }, 1000, this
+                        }, 1000
                     );
                 }
             } else if (state) {
@@ -2040,7 +2017,7 @@ class Manager {
                         );
                         global.workspace_manager.get_workspace_by_index(ui.wid)
                             .activate(
-                                global.get_current_time()
+                                Meta.CURRENT_TIME
                             );
                     }
                     else if (ui.ins) {
@@ -2056,7 +2033,7 @@ class Manager {
                             );
                         }
                     }
-                    ui.win.activate(global.get_current_time());
+                    ui.win.activate(Meta.CURRENT_TIME);
                     this._actionWidgets[wid] = ui = null;
                 }
             } else if (state) {
@@ -2176,7 +2153,7 @@ class Manager {
                         let me = this;
                         this._actionWidgets[cid] = 0;
                         this._sendKeyPress([keyId]);
-                        this._actionWidgets[wid] = this.setInterval(
+                        this._actionWidgets[wid] = setInterval(
                             function () {
                                 if (me._actionWidgets[cid] >= 5) {
                                     me._sendKeyPress([keyId]);
@@ -2191,7 +2168,7 @@ class Manager {
                 }
                 if (state) {
                     if (this._actionWidgets[wid]) {
-                        this.clearInterval(this._actionWidgets[wid]);
+                        clearInterval(this._actionWidgets[wid]);
                     }
                     this._actionWidgets[wid] = 0;
                     this._actionWidgets[cid] = 0;
