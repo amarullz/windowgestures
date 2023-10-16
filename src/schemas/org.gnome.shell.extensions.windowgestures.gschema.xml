@@ -7,12 +7,6 @@
             <default>false</default>
             <summary>Use 3 Fingers</summary>
         </key>
-
-        <key name="horiz-swap-switch" type="b">
-            <default>false</default>
-            <summary>Horizontal Swipe Always Switch Windows</summary>
-        </key>
-
         <key name="use-active-window" type="b">
             <default>false</default>
             <summary>Handle Active Window</summary>
@@ -22,35 +16,26 @@
             <default>true</default>
             <summary>Enable Resize</summary>
         </key>
-
         <key name="fn-move" type="b">
             <default>true</default>
             <summary>Enable Move</summary>
         </key>
-
         <key name="fn-maximized-snap" type="b">
             <default>true</default>
             <summary>Enable Maximized Snap</summary>
         </key>
-
         <key name="fn-move-snap" type="b">
             <default>true</default>
             <summary>Enable Move Snap</summary>
         </key>
-
         <key name="fn-fullscreen" type="b">
             <default>true</default>
             <summary>Enable Fullscreen</summary>
         </key>
-
-
-
         <key name="pinch-enable" type="b">
             <default>true</default>
             <summary>Enable Pinch</summary>
         </key>
-
-
 
         <key type="i" name="swipe4-left">
             <default>7</default>
@@ -62,7 +47,6 @@
             <summary>Swipe 4 Fingers Right</summary>
             <range min="0" max="30"/>
         </key>
-
         <key type="i" name="swipe3-down">
             <default>3</default>
             <summary>Swipe 3 Fingers Down</summary>
@@ -78,7 +62,6 @@
             <summary>Swipe 3 Fingers Right</summary>
             <range min="0" max="30"/>
         </key>
-
         <key type="i" name="swipe4-updown">
             <default>0</default>
             <summary>Swipe 4 Fingers Up+Down</summary>
@@ -91,7 +74,6 @@
         </key>
 
 
-
         <key type="i" name="pinch3-in">
             <default>1</default>
             <summary>Pinch-In 3 Fingers</summary>
@@ -102,7 +84,6 @@
             <summary>Pinch-Out 3 Fingers</summary>
             <range min="0" max="30"/>
         </key>
-        
         <key type="i" name="pinch4-in">
             <default>0</default>
             <summary>Pinch-In 4 Fingers</summary>
@@ -114,8 +95,6 @@
             <range min="0" max="30"/>
         </key>
 
-
-
         <key type="i" name="pinch-in-scale">
             <default>50</default>
             <summary>Pinch-In Scale</summary>
@@ -126,28 +105,21 @@
             <summary>Pinch-In Scale</summary>
             <range min="120" max="200"/>
         </key>
-
-        
-
-
         <key type="i" name="edge-size">
             <default>32</default>
             <summary>Edge Size for Resize</summary>
             <range min="16" max="96"/>
         </key>
-
         <key type="i" name="top-edge-size">
             <default>64</default>
             <summary>Title Edge size</summary>
             <range min="16" max="96"/>
         </key>
-
         <key type="i" name="gesture-threshold">
             <default>32</default>
             <summary>Gesture Threshold</summary>
             <range min="16" max="64"/>
         </key>
-
         <key type="i" name="gesture-cancel-threshold">
             <default>8</default>
             <summary>Gesture Cancel Threshold</summary>

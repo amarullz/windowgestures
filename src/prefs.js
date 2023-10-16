@@ -45,16 +45,10 @@ export default class extends ExtensionPreferences {
             ""
         );
         this._createSwitch(
-            gestures, "horiz-swap-switch",
-            "Horizontal swipe for switch windows",
-            "If true, Horizontal swipe will always switching windows just like swiping outside window area",
-        );
-        this._createSwitch(
             gestures, "use-active-window",
-            "Always use active window",
+            "Use active window",
             "If true, gesture will control active window rather than window on current pointer. This will disable resize function"
         );
-
 
         // Function Settings
         const fn = new Adw.PreferencesGroup({ title: "Functions" });
@@ -84,7 +78,6 @@ export default class extends ExtensionPreferences {
             ""
         );
 
-
         // Pinch Settings
         const action_list = [
             "Disable",
@@ -108,7 +101,6 @@ export default class extends ExtensionPreferences {
             "Media play",           // 15
             "Media next",           // 16
             "Media previous",       // 17
-
 
             "Alt+Tab switch",       // 18
             "Overview",             // 19
@@ -145,41 +137,32 @@ export default class extends ExtensionPreferences {
         this._createCombo(act, "pinch4-out",
             "Pinch-out 4 fingers", "", action_list);
 
-
-
-
         // Tweaks Settings
         const tweaks = new Adw.PreferencesGroup({ title: "Tweaks" });
         this._createSpin(tweaks, "edge-size",
             "Resize edge size",
             "Number of pixel from window egdes to determine resize action",
             16, 96, 4);
-
         this._createSpin(tweaks, "top-edge-size",
             "Title edge size",
             "Number of pixel from top of window to determine move action",
             16, 96, 4);
-
         this._createSpin(tweaks, "gesture-threshold",
             "Gesture threshold",
             "",
             16, 64, 4);
-
         this._createSpin(tweaks, "gesture-cancel-threshold",
             "Gesture cancel threshold",
             "",
             4, 32, 1);
-
         this._createSpin(tweaks, "gesture-acceleration",
             "Gesture acceleration",
             "",
             10, 25, 1);
-
         this._createSpin(tweaks, "pinch-in-scale",
             "Pinch in scale target",
             "",
             30, 80, 5);
-
         this._createSpin(tweaks, "pinch-out-scale",
             "Pinch out scale target",
             "",
@@ -271,29 +254,6 @@ export default class extends ExtensionPreferences {
             this.getSettings().set_int(bind, widget.selected);
         });
         parent.add(comboRow);
-    }
-
-    /* Create Drop Down Row */
-    _createDropDown(parent, bind, title, subtitle, items) {
-        const itemStr = new Gtk.StringList();
-        for (var i = 0; i < items.length; i++) {
-            itemStr.append(items[i]);
-        }
-        const dropDownMenu = new Gtk.DropDown({
-            valign: Gtk.Align.CENTER,
-            model: itemStr,
-            selected: this.getSettings().get_int(bind),
-        });
-        const dropDownRow = new Adw.ActionRow({
-            title: title,
-            subtitle: subtitle,
-            activatable_widget: dropDownMenu,
-        });
-        dropDownRow.add_suffix(dropDownMenu);
-        dropDownMenu.connect('notify::selected', widget => {
-            this.getSettings().set_int(bind, widget.selected);
-        });
-        parent.add(dropDownRow);
     }
 
     /* Create Link */

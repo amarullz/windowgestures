@@ -113,8 +113,6 @@ class Manager {
         this._ShaderClass = null;
     }
 
-
-
     // Initialize variables
     _clearVars() {
         // Target window to manage
@@ -220,7 +218,6 @@ class Manager {
         });
         this._swipeMods = [];
     }
-
 
     // Create UI Indicator
     _createUi(ui_class, x, y, w, h, icon, parent) {
@@ -367,7 +364,10 @@ class Manager {
         const period = lastTime - firstTime;
         return totalDelta / period;
     }
+
     _velocityFling(vel, curr, max, maxframe, cb) {
+        let ctime = this._tick();
+        this._velocityFlingTime = ctime;
         let n = 0;
         let target = curr;
         let v = vel;
@@ -376,7 +376,12 @@ class Manager {
             target += v * 2;
             v *= 0.98;
             n++;
-            if (target >= max || n >= maxframe) {
+            if (me._velocityFlingTime != ctime) {
+                // Another fling called
+                cb(1, target);
+                me.clearInterval(iv);
+            }
+            else if (target >= max || n >= maxframe) {
                 if (target >= max) {
                     target = max;
                 }
@@ -388,8 +393,6 @@ class Manager {
             }
         }, 4);
     }
-
-
     _tick() {
         return new Date().getTime();
     }
@@ -428,12 +431,6 @@ class Manager {
         return this._settings.get_int('gesture-cancel-threshold');
     }
 
-    // Get horizontal swipe mode
-    _getHorizontalSwipeMode() {
-        // false. Change workspace, true. Switch Window
-        return this._settings.get_boolean("horiz-swap-switch");
-    }
-
     // Is 3 Finger
     _gestureNumFinger() {
         return this._settings.get_boolean("three-finger") ? 3 : 4;
@@ -458,16 +455,12 @@ class Manager {
     _getEnableFullscreen() {
         return this._settings.get_boolean("fn-fullscreen");
     }
-
-
     _getPinchInScale() {
         return this._settings.get_int('pinch-in-scale');
     }
-
     _getPinchOutScale() {
         return this._settings.get_int('pinch-out-scale');
     }
-
     _getPinchEnabled() {
         return this._settings.get_boolean("pinch-enable");
     }
@@ -795,7 +788,6 @@ class Manager {
 
         // Get current mouse position
         let [pointerX, pointerY, pointerZ] = global.get_pointer();
-
         this._startPos.x = pointerX;
         this._startPos.y = pointerY;
         this._movePos.x = this._movePos.y = 0;
@@ -1141,7 +1133,6 @@ class Manager {
         if (prog >= 1) {
             prog = 1.0;
         }
-
         this._gesture.action = 0;
 
         // Set action
@@ -1251,7 +1242,6 @@ class Manager {
                 this._runAction(aid, 1, this._gesture.progress);
             }
         }
-
         this._clearVars();
         return retval;
     }
@@ -1262,13 +1252,11 @@ class Manager {
         if (numfingers != 3 && numfingers != 4) {
             return Clutter.EVENT_PROPAGATE;
         }
-
         // Process gestures state
         switch (event.get_gesture_phase()) {
             case Clutter.TouchpadGesturePhase.BEGIN:
                 // Begin event
                 return this._swipeBegin(numfingers);
-
             case Clutter.TouchpadGesturePhase.UPDATE:
                 // Update / move event
                 let [dx, dy] = event.get_gesture_motion_delta();
@@ -1391,7 +1379,6 @@ class Manager {
             }
             this._runAction(action_id, 1, this._gesture.progress);
         }
-
         this._clearVars();
         return Clutter.EVENT_STOP;
     }
@@ -1419,7 +1406,6 @@ class Manager {
 
     // Touch Event Handler
     _touchpadEvent(actor, event) {
-
         // Process pinch
         if (event.type() == Clutter.EventType.TOUCHPAD_PINCH)
             return this._pinchEventHandler(actor, event);
@@ -1427,7 +1413,6 @@ class Manager {
         // Process swipe
         if (event.type() == Clutter.EventType.TOUCHPAD_SWIPE)
             return this._swipeEventHandler(actor, event);
-
 
         return Clutter.EVENT_PROPAGATE;
     }
@@ -1443,7 +1428,6 @@ class Manager {
             case 5: cfg_name = "swipe3-left"; break;
             case 6: cfg_name = "swipe3-right"; break;
             case 7: cfg_name = "swipe3-downup"; break;
-
             case 8: cfg_name = "pinch3-in"; break;
             case 9: cfg_name = "pinch3-out"; break;
             case 10: cfg_name = "pinch4-in"; break;
@@ -1846,7 +1830,6 @@ class Manager {
             }
         }
 
-
         else if ((id == 6) || (id == 7)) {
             //
             // NEXT & PREVIOUS WINDOW SWITCHING
@@ -1954,9 +1937,6 @@ class Manager {
                 this._actionWidgets[wid] = ui = null;
             }
         }
-
-
-
 
         else if (id >= 8 && id <= 9) {
             //
@@ -2138,11 +2118,8 @@ class Manager {
 
         }
 
-
-
-
         //
-        // TODO: Change Below Actions
+        // Non animated actions
         //
         else if (id == 18) {
             if (this._isOnOverview()) {
@@ -2200,7 +2177,9 @@ class Manager {
         }
 
         else if (id >= 50 && id <= 53) {
-            // Maximize, Fullscreen, Snap & Restore
+            //
+            // Maximized, Fullscreen, Spap Etc.
+            //
             let activeWin = global.display.get_focus_window();
             if (!activeWin || this._isOnOverview()) {
                 return; // Ignore on overview & no active window
@@ -2349,7 +2328,6 @@ class Manager {
                 }
             }
         }
-
         //
         // End Of Actions
         //
