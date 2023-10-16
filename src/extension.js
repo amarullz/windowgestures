@@ -1622,7 +1622,7 @@ class Manager {
         let threshold = this._gestureThreshold();
         let combineTrigger = this._gestureThreshold() * 2;
         let trigger = (threshold / 4) + 1;
-        let target = 1.00 * (trigger + (threshold * 8));
+        let target = 1.00 * (trigger + (threshold * 10));
         let absX = Math.abs(this._movePos.x);
         let absY = Math.abs(this._movePos.y);
 
@@ -1663,7 +1663,8 @@ class Manager {
         }
 
         let prog = 0;
-        let vert = false;
+        let vert = 0;
+        let horiz = 0;
         let gname = "none";
         if (this._isEdge(WindowEdgeAction.GESTURE_LEFT)) {
             if (!this._swipeIsWin &&
@@ -1680,6 +1681,7 @@ class Manager {
                 prog = Math.abs(xmove) / target;
             }
             gname = "LEFT";
+            horiz = 1;
         }
         else if (this._isEdge(WindowEdgeAction.GESTURE_RIGHT)) {
             if (!this._swipeIsWin &&
@@ -1689,12 +1691,13 @@ class Manager {
             let xmove = this._movePos.x - trigger;
             if (this._isEdge(WindowEdgeAction.GESTURE_UP) ||
                 this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
-                xmove = this._movePos.x + combineTrigger;
+                xmove = this._movePos.x - combineTrigger;
             }
             if (xmove > 0) {
                 prog = xmove / target;
             }
             gname = "RIGHT";
+            horiz = 2;
         }
         else if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
             if (!this._swipeIsWin) {
@@ -1703,7 +1706,7 @@ class Manager {
             if (this._movePos.y < 0) {
                 prog = Math.abs(this._movePos.y) / target;
             }
-            vert = true;
+            vert = 1;
             gname = "UP";
         }
         else if (this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
@@ -1714,34 +1717,41 @@ class Manager {
                 this._hooked = true;
             }
             if (this._movePos.y > 0) {
-                prog = this._movePos.y / target;
+                let movey = this._movePos.y - (threshold * 6);
+                if (movey < 0) {
+                    movey = 0;
+                }
+                prog = movey / target;
             }
-            vert = true;
+            vert = 2;
             gname = "DOWN";
         }
 
         if (vert) {
             if (absX >= trigger) {
-                // Combination gesture (Down + Left/Right)
-                if (this._movePos.x < 0 - combineTrigger) {
-                    this._edgeAction |= WindowEdgeAction.GESTURE_LEFT;
-                    this._gesture.velocity = this._velocityInit();
-                    this._velocityAppend(this._gesture.velocity, 0);
-                    this._movePos.y = 0;
-                    return this._swipeUpdate(0, 0);
-                }
-                else if (this._movePos.x > combineTrigger) {
-                    this._edgeAction |= WindowEdgeAction.GESTURE_RIGHT;
-                    this._gesture.velocity = this._velocityInit();
-                    this._velocityAppend(this._gesture.velocity, 0);
-                    this._movePos.y = 0;
-                    return this._swipeUpdate(0, 0);
+                if (vert == 1 || prog == 0) {
+                    // Combination gesture (Down + Left/Right)
+                    if (this._movePos.x <= 0 - combineTrigger) {
+                        this._edgeAction |= WindowEdgeAction.GESTURE_LEFT;
+                        this._gesture.velocity = this._velocityInit();
+                        this._velocityAppend(this._gesture.velocity, 0);
+                        this._movePos.y = 0;
+                        return this._swipeUpdate(0, 0);
+                    }
+                    else if (this._movePos.x >= combineTrigger) {
+                        this._edgeAction |= WindowEdgeAction.GESTURE_RIGHT;
+                        this._gesture.velocity = this._velocityInit();
+                        this._velocityAppend(this._gesture.velocity, 0);
+                        this._movePos.y = 0;
+                        return this._swipeUpdate(0, 0);
+                    }
                 }
             }
         }
         else {
             if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
                 gname = "UP+" + gname;
+                vert = 1;
 
                 // Reset to single gesture
                 if (Math.abs(this._movePos.x) < combineTrigger) {
@@ -1753,6 +1763,7 @@ class Manager {
             }
             else if (this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
                 gname = "DOWN+" + gname;
+                vert = 2;
 
                 // Reset to single gesture
                 if (Math.abs(this._movePos.x) < combineTrigger) {
@@ -1769,27 +1780,73 @@ class Manager {
             prog = 1.0;
         }
 
+        this._gesture.action = 0;
+
+        // Set action
+        if (vert == 0) {
+            this._gesture.action = horiz;
+        }
+        else if (vert == 2) {
+            this._gesture.action = (horiz == 0) ? 3 : ((horiz == 1) ? 4 : 5);
+        }
+
+        // Cancel action
+        if (this._gesture.action_cmp &&
+            (this._gesture.action != this._gesture.action_cmp)) {
+            // Send Cancel State
+            let aid = this._actionIdGet(this._gesture.action_cmp);
+            if (aid) {
+                this._runAction(aid, 1, 0);
+            }
+        }
+
+        // Update progress & velocity
         this._gesture.progress = prog;
         this._velocityAppend(this._gesture.velocity,
             this._gesture.progress);
         log("Gesture " + gname + " = " + prog);
+
+        if (this._gesture.action) {
+            let aid = this._actionIdGet(this._gesture.action);
+            if (aid) {
+                this._runAction(aid, 0, this._gesture.progress);
+            }
+            this._gesture.action_cmp = this._gesture.action;
+        }
+
         return Clutter.EVENT_STOP;
     }
 
     _swipeEnd() {
+        if (this._gesture.action) {
+            let aid = this._actionIdGet(this._gesture.action);
+            if (aid) {
+                if (this._gesture.progress < 1.0) {
+                    // Fling Velocity
+                    let vel = this._velocityCalc(this._gesture.velocity);
+                    if (vel > 0.001) {
+                        let me = this;
+                        this._velocityFling(vel,
+                            this._gesture.progress,
+                            1.0, 30,
+                            function (state, prog) {
+                                me._runAction(aid, state, prog);
+                            }
+                        );
+                        this._clearVars();
+                        return Clutter.EVENT_STOP;
+                    }
+                }
+                this._runAction(aid, 1, this._gesture.progress);
+            }
+        }
+
         if (!this._swipeIsWin && !this._hooked) {
             this._clearVars();
             return Clutter.EVENT_PROPAGATE;
         }
 
         this._hooked = false;
-        if (!this._gesture.begin) {
-            return Clutter.EVENT_PROPAGATE;
-        }
-
-        let vel = this._velocityCalc(this._gesture.velocity);
-        log("Gesture End / Vel = " + vel);
-
         this._clearVars();
         return Clutter.EVENT_STOP;
     }
