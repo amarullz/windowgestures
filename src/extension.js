@@ -1128,15 +1128,15 @@ class Manager {
                 }
             }
         }
-        else {
+        else if (horiz) {
             if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
                 vert = 1;
                 // Reset to single gesture
-                if (Math.abs(this._movePos.x) < combineTrigger) {
+                if (Math.abs(this._movePos.x) < trigger) {
                     this._edgeAction = WindowEdgeAction.GESTURE_UP;
                     this._gesture.velocity = this._velocityInit();
                     this._velocityAppend(this._gesture.velocity, 0);
-                    // this._movePos.y = 0 - trigger;
+                    this._movePos.y = 0 - combineTrigger;
                     return this._swipeUpdate(0, 0);
                 }
             }
@@ -1144,11 +1144,11 @@ class Manager {
                 vert = 2;
 
                 // Reset to single gesture
-                if (Math.abs(this._movePos.x) < combineTrigger) {
+                if (Math.abs(this._movePos.x) < trigger) {
                     this._edgeAction = WindowEdgeAction.GESTURE_DOWN;
                     this._gesture.velocity = this._velocityInit();
                     this._velocityAppend(this._gesture.velocity, 0);
-                    // this._movePos.y = trigger;
+                    this._movePos.y = combineTrigger;
                     return this._swipeUpdate(0, 0);
                 }
             }
@@ -1157,20 +1157,22 @@ class Manager {
         // Switch gestures direction
         if (
             (vert == 1 && (this._movePos.y > 0 - trigger)) ||
-            (vert == 2 && (this._movePos.y < trigger)) ||
+            (vert == 2 && (this._movePos.y < 0)) ||
             (horiz == 1 && (this._movePos.x > 0 - trigger)) ||
-            (horiz == 2 && (this._movePos.x < trigger))
+            (horiz == 2 && (this._movePos.x < 0))
         ) {
-            if (vert) {
-                this._movePos.x = 0;
+            if (!(this._isEdge(WindowEdgeAction.GESTURE_DOWN) && horiz)) {
+                if (vert) {
+                    this._movePos.x = 0;
+                }
+                if (horiz) {
+                    this._movePos.y = 0;
+                }
+                this._edgeAction = WindowEdgeAction.NONE;
+                this._gesture.velocity = this._velocityInit();
+                this._velocityAppend(this._gesture.velocity, 0);
+                return this._swipeUpdate(0, 0);
             }
-            if (horiz) {
-                this._movePos.y = 0;
-            }
-            this._edgeAction = WindowEdgeAction.NONE;
-            this._gesture.velocity = this._velocityInit();
-            this._velocityAppend(this._gesture.velocity, 0);
-            return this._swipeUpdate(0, 0);
         }
 
         // Limit progress
