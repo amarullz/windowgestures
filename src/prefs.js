@@ -31,6 +31,7 @@ export default class extends ExtensionPreferences {
             'See the <a href="https://gnu.org/licenses/old-licenses/gpl-2.0.html">' +
             'GNU General Public License, version 2 or later</a> for details.' +
             '</span>';
+        let isSwap = this.getSettings().get_boolean('three-finger');
 
         // Gesture Settings
         const gestures = new Adw.PreferencesGroup({ title: "Gestures" });
@@ -117,7 +118,9 @@ export default class extends ExtensionPreferences {
 
         ];
 
-        let act1 = new Adw.PreferencesGroup({ title: "4 Fingers Actions" });
+        const act1 = new Adw.PreferencesGroup({
+            title: (isSwap ? "3" : "4") + " Fingers Actions"
+        });
         this._createCombo(act1, "swipe4-left",
             "Swipe left", "", action_list);
         this._createCombo(act1, "swipe4-right",
@@ -127,7 +130,9 @@ export default class extends ExtensionPreferences {
             "Swipe up > down if Tap and hold to move/resize window disabled",
             action_list);
 
-        let act2 = new Adw.PreferencesGroup({ title: "3 Fingers Actions" });
+        const act2 = new Adw.PreferencesGroup({
+            title: (isSwap ? "4" : "3") + " Fingers Actions"
+        });
         this._createCombo(act2, "swipe3-down",
             "Swipe down", "", action_list);
         this._createCombo(act2, "swipe3-left",
@@ -222,12 +227,6 @@ export default class extends ExtensionPreferences {
         page.add(about);
         page.add(gnuSoftwareGroup);
         window.add(page);
-
-        this._updateActionTitle(act1, act2);
-        this.getSettings().connect('changed::three-finger',
-            (settings, key) => {
-                this._updateActionTitle(act1, act2);
-            });
     }
 
     /* Create Switch Config */
@@ -290,17 +289,5 @@ export default class extends ExtensionPreferences {
         });
         linkRow.add_suffix(image);
         return linkRow;
-    }
-
-    _updateActionTitle(act1, act2) {
-        let isSwap = this.getSettings().get_boolean('three-finger');
-        if (isSwap) {
-            act1.set_title('3 Fingers Actions');
-            act2.set_title('4 Fingers Actions');
-        }
-        else {
-            act2.set_title('3 Fingers Actions');
-            act1.set_title('4 Fingers Actions');
-        }
     }
 }
