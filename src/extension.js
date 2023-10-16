@@ -2377,17 +2377,20 @@ class Manager {
                         activeWin?.get_compositor_private()
                             .set_pivot_point(0.5, 1);
                         activeWin.get_compositor_private().scale_y =
-                            1.0 + (progress * 0.05);
+                            1.0 + (progress * 0.025);
                     }
                     else if (ui >= 5) {
                         // un-fullsccreen / restore
                         activeWin?.get_compositor_private()
                             .set_pivot_point(0.5, 1);
-                        activeWin.get_compositor_private().scale_y =
-                            1.0 - (progress * 0.05);
                         if (ui == 6) {
-                            activeWin.get_compositor_private().scale_x =
-                                1.0 - (progress * 0.05);
+                            activeWin.get_compositor_private().scale_y =
+                                activeWin.get_compositor_private().scale_x =
+                                1.0 - (progress * 0.04);
+                        }
+                        else {
+                            activeWin.get_compositor_private().scale_y =
+                                1.0 - (progress * 0.025);
                         }
                     }
                     else if (ui <= 3) {
