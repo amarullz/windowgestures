@@ -141,7 +141,7 @@ class Manager {
 
         // Edge Action
         this._edgeAction = WindowEdgeAction.NONE;
-        this._edgeGestured = false;
+        this._edgeGestured = 0;
         this._swipeIsWin = false;
         this._isActiveWin = false;
 
@@ -746,7 +746,7 @@ class Manager {
 
         // Default edge: need move event for more actions
         this._edgeAction = WindowEdgeAction.WAIT_GESTURE;
-        this._edgeGestured = false;
+        this._edgeGestured = 0;
 
         // Check allow resize
         if (allowResize && this._targetWindow.allows_resize() &&
@@ -1542,7 +1542,7 @@ class Manager {
 
         // Default edge: need move event for more actions
         this._edgeAction = WindowEdgeAction.NONE;
-        this._edgeGestured = false;
+        this._edgeGestured = 0;
 
         // Check allow resize
         if (this._swipeIsWin && !this._isActiveWin && allowResize &&
@@ -1658,7 +1658,7 @@ class Manager {
                     }
                     this._movePos.x = 0;
                 }
-                this._edgeGestured = true;
+                this._edgeGestured = this._edgeGestured ? 2 : 1;
                 this._gesture.velocity = this._velocityInit();
                 this._velocityAppend(this._gesture.velocity, 0);
             }
@@ -1835,7 +1835,9 @@ class Manager {
                 }
                 else {
                     // vert
-                    this._gesture.action = (vert == 2) ? 3 : 50; // d=50, u=3
+                    this._gesture.action = (vert == 2) ?
+                        ((this._edgeGestured == 1) ? 53 : 3) :
+                        50; // up=50, dn=53, up+dn=3
                     gname += " | " + ((vert == 1) ? "4up" : "4down");
                 }
             }
