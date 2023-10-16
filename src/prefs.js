@@ -137,22 +137,6 @@ export default class extends ExtensionPreferences {
         this._createCombo(act2, "swipe3-downup",
             "Swipe down > up", "", action_list);
 
-        let updateActionTitle = function (isSwap) {
-            if (isSwap) {
-                act1.set_title('3 Fingers Actions');
-                act2.set_title('4 Fingers Actions');
-            }
-            else {
-                act2.set_title('3 Fingers Actions');
-                act1.set_title('4 Fingers Actions');
-            }
-        }
-        updateActionTitle(this.getSettings().get_boolean('three-finger'));
-        this.getSettings().connect('changed::three-finger',
-            (settings, key) => {
-                updateActionTitle(settings.get_boolean(key));
-            });
-
         const act3 = new Adw.PreferencesGroup({ title: "Pinch Actions" });
         this._createCombo(act3, "pinch3-in",
             "Pinch-in 3 fingers", "", action_list);
@@ -238,6 +222,12 @@ export default class extends ExtensionPreferences {
         page.add(about);
         page.add(gnuSoftwareGroup);
         window.add(page);
+
+        this._updateActionTitle(act1, act2);
+        this.getSettings().connect('changed::three-finger',
+            (settings, key) => {
+                this._updateActionTitle(act1, act2);
+            });
     }
 
     /* Create Switch Config */
@@ -300,5 +290,17 @@ export default class extends ExtensionPreferences {
         });
         linkRow.add_suffix(image);
         return linkRow;
+    }
+
+    _updateActionTitle(act1, act2) {
+        let isSwap = this.getSettings().get_boolean('three-finger');
+        if (isSwap) {
+            act1.set_title('3 Fingers Actions');
+            act2.set_title('4 Fingers Actions');
+        }
+        else {
+            act2.set_title('3 Fingers Actions');
+            act1.set_title('4 Fingers Actions');
+        }
     }
 }
