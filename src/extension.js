@@ -1450,13 +1450,10 @@ class Manager {
 
     _tapHoldGesture(state, numfingers) {
         let isWin = (numfingers == this._gestureNumFinger());
-        log("HoldEv(" + state + "/" + numfingers + ")");
         if (isWin && this._getTapHoldMove()) {
             if (state) {
                 let me = this;
-                log("Hold Start");
                 this._holdTo = this.setTimeout(function () {
-                    log("Hold Exec");
                     me._holdTo = 0;
                     let activeWin = null;
                     if (!me._getUseActiveWindow()) {
@@ -1496,10 +1493,8 @@ class Manager {
             }
             else {
                 if (this._holdTo) {
-                    log("Hold Cancel");
                     this.clearTimeout(this._holdTo);
                 }
-                log("Hold Release");
                 this._holdTo = 0;
             }
         }
