@@ -1009,10 +1009,8 @@ class Manager {
         let prog = 0;
         let vert = 0;
         let horiz = 0;
-        let gname = "none";
         if (this._isEdge(WindowEdgeAction.GESTURE_LEFT)) {
             if (!this._swipeIsWin && !this._hooked) {
-                log("Gesture Left 3 Finger Cancel");
                 return Clutter.EVENT_PROPAGATE;
             }
             let xmove = this._movePos.x + trigger;
@@ -1021,13 +1019,11 @@ class Manager {
                 xmove = this._movePos.x + combineTrigger;
             }
             else if (!this._swipeIsWin) {
-                log("Gesture Left 3 Finger Cancel");
                 return Clutter.EVENT_PROPAGATE;
             }
             if (xmove < 0) {
                 prog = Math.abs(xmove) / target;
             }
-            gname = "LEFT";
             horiz = 1;
         }
         else if (this._isEdge(WindowEdgeAction.GESTURE_RIGHT)) {
@@ -1040,13 +1036,11 @@ class Manager {
                 xmove = this._movePos.x - combineTrigger;
             }
             else if (!this._swipeIsWin) {
-                log("Gesture Left 3 Finger Cancel");
                 return Clutter.EVENT_PROPAGATE;
             }
             if (xmove > 0) {
                 prog = xmove / target;
             }
-            gname = "RIGHT";
             horiz = 2;
         }
         else if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
@@ -1057,7 +1051,6 @@ class Manager {
                 prog = Math.abs(this._movePos.y) / target;
             }
             vert = 1;
-            gname = "UP";
         }
         else if (this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
             if (!this._swipeIsWin && this._isOnOverview()) {
@@ -1075,7 +1068,6 @@ class Manager {
                 prog = movey / target;
             }
             vert = 2;
-            gname = "DOWN";
         }
 
         if (vert) {
@@ -1102,7 +1094,6 @@ class Manager {
         }
         else {
             if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
-                gname = "UP+" + gname;
                 vert = 1;
                 // Reset to single gesture
                 if (Math.abs(this._movePos.x) < combineTrigger) {
@@ -1114,7 +1105,6 @@ class Manager {
                 }
             }
             else if (this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
-                gname = "DOWN+" + gname;
                 vert = 2;
 
                 // Reset to single gesture
@@ -1157,33 +1147,28 @@ class Manager {
         // Set action
         if (vert == 0) {
             this._gesture.action = horiz; // left=1, right=2
-            gname += " | " + ((horiz == 1) ? "4left" : "4right");
         }
         else {
             if (!this._swipeIsWin) {
                 if (horiz && vert == 2) {
                     // down + horiz
                     this._gesture.action = horiz + 4; // left=5, right=6
-                    gname += " | " + ((horiz == 1) ? "3dn-left" : "3dn-right");
                 }
                 else {
                     // vert
                     this._gesture.action = (vert == 2) ? 4 : 7; // d=4, u=7
-                    gname += " | " + ((vert == 1) ? "3up" : "3down");
                 }
             }
             else {
                 if (horiz && vert == 1) {
                     // up + horiz
                     this._gesture.action = horiz + 50; // left=51, right=52
-                    gname += " | " + ((horiz == 1) ? "4up-left" : "4up-right");
                 }
                 else {
                     // vert
                     this._gesture.action = (vert == 2) ?
                         ((this._edgeGestured == 1) ? 53 : 3) :
                         50; // up=50, dn=53, up+dn=3
-                    gname += " | " + ((vert == 1) ? "4up" : "4down");
                 }
             }
         }
@@ -1202,7 +1187,6 @@ class Manager {
         this._gesture.progress = prog;
         this._velocityAppend(this._gesture.velocity,
             this._gesture.progress);
-        log("Gesture " + gname + " (" + this._gesture.action + ")= " + prog);
 
         if (this._gesture.action) {
             let aid = this._actionIdGet(this._gesture.action);
