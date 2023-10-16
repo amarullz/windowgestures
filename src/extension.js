@@ -373,7 +373,7 @@ class Manager {
         let v = vel;
         let me = this;
         let iv = setInterval(function () {
-            target += v * 3;
+            target += v * 2;
             v *= 0.98;
             n++;
             if (me._velocityFlingTime != ctime) {
@@ -391,7 +391,7 @@ class Manager {
             else {
                 cb(0, target);
             }
-        }, 5);
+        }, 4);
     }
     _tick() {
         return new Date().getTime();
