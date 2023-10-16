@@ -159,7 +159,7 @@ class Manager {
         };
 
         // Clear window tile preview
-        this._hidePreview();
+        // this._hidePreview();
     }
 
     // Init 3 or 4 finger count switch mode
@@ -484,11 +484,11 @@ class Manager {
 
     // Show Preview
     _showPreview(rx, ry, rw, rh) {
-        if (this._targetWindow == null) {
+        if (global.display.get_focus_window() == null) {
             return;
         }
         global.window_manager.emit("show-tile-preview",
-            this._targetWindow, new Meta.Rectangle(
+            global.display.get_focus_window(), new Meta.Rectangle(
                 { x: rx, y: ry, width: rw, height: rh }
             )
             , this._monitorId
@@ -655,676 +655,10 @@ class Manager {
         GLib.source_remove(id);
     }
 
-    // On swipe gesture started
-    _swipeBegin1() {
-        // Stop if it was on overview
-        if (this._isOnOverview()) {
-            return Clutter.EVENT_STOP;
-        }
-
-        // Get current mouse position
-        let [pointerX, pointerY, pointerZ] = global.get_pointer();
-
-        // Save start position
-        this._startPos.x = pointerX;
-        this._startPos.y = pointerY;
-
-        // Reset move position
-        this._movePos.x = this._movePos.y = 0;
-
-        // Configs
-        let allowResize = this._getEnableResize();
-        let allowMove = this._getEnableMove();
-
-        if (this._getUseActiveWindow()) {
-            // Get Active Window
-            this._targetWindow = global.display.get_focus_window();
-            if (!this._targetWindow) {
-                return Clutter.EVENT_PROPAGATE;
-            }
-            allowResize = false;
-        }
-        else {
-            // Get actor in current mouse position
-            let currActor = global.stage.get_actor_at_pos(
-                Clutter.PickMode.REACTIVE, pointerX, pointerY
-            );
-
-            // Find root window for current actor
-            let currWindow = currActor.get_parent();
-            let i = 0;
-            while (!currWindow.get_meta_window) {
-                currWindow = currWindow.get_parent();
-                // Hack for it to works, some apps only 1 level to root window,
-                // some apps is multiple parents to root window.
-                // loop until got the root (or max 10 level)
-                if (!currWindow || (++i > 10)) {
-                    // cannot fetch root window, so ignore it!
-                    return Clutter.EVENT_PROPAGATE;
-                }
-            }
-
-            // Set meta window as target window to manage
-            this._targetWindow = currWindow.get_meta_window();
-        }
-
-        // Set opener window as target if it was dialog
-        if (this._targetWindow.is_attached_dialog()) {
-            this._targetWindow = this._targetWindow.get_transient_for();
-        }
-
-        // Check blacklist window
-        if (this._isWindowBlacklist(this._targetWindow)) {
-            this._targetWindow = null;
-            return Clutter.EVENT_PROPAGATE;
-        }
-
-        // Get monitor area
-        this._monitorArea = this._targetWindow.get_work_area_current_monitor();
-
-        // Get monitor id
-        this._monitorId = global.display.get_monitor_index_for_rect(
-            this._monitorArea
-        );
-
-        // Get start frame rectangle
-        this._startWinArea = this._targetWindow.get_frame_rect();
-
-        // Window area as local value
-        let wLeft = this._startWinArea.x;
-        let wTop = this._startWinArea.y;
-        let wRight = wLeft + this._startWinArea.width;
-        let wBottom = wTop + this._startWinArea.height;
-        let wThirdX = wLeft + (this._startWinArea.width / 3);
-        let wThirdY = wTop + (this._startWinArea.height / 3);
-        let w34X = wLeft + ((this._startWinArea.width / 3) * 2);
-        let w34Y = wTop + ((this._startWinArea.height / 3) * 2);
-
-        // Detect window edge
-        let edge = this._edgeSize();
-        let topEdge = this._topEdgeSize();
-
-        // Default edge: need move event for more actions
-        this._edgeAction = WindowEdgeAction.WAIT_GESTURE;
-        this._edgeGestured = 0;
-
-        // Check allow resize
-        if (allowResize && this._targetWindow.allows_resize() &&
-            this._targetWindow.allows_move()) {
-            // Edge cursor position detection
-            if (this._startPos.y >= wBottom - edge) {
-                // Cursor on bottom of window
-                this._edgeAction =
-                    WindowEdgeAction.RESIZE |
-                    WindowEdgeAction.RESIZE_BOTTOM;
-
-                // 1/3 from left|right
-                if (this._startPos.x <= wThirdX) {
-                    this._edgeAction |= WindowEdgeAction.RESIZE_LEFT;
-                }
-                else if (this._startPos.x >= w34X) {
-                    this._edgeAction |= WindowEdgeAction.RESIZE_RIGHT;
-                }
-            }
-            else {
-                if (this._startPos.x <= wLeft + edge) {
-                    // Cursor on left side of window
-                    this._edgeAction =
-                        WindowEdgeAction.RESIZE |
-                        WindowEdgeAction.RESIZE_LEFT;
-                }
-                else if (this._startPos.x >= wRight - edge) {
-                    // Cursor on right side of window
-                    this._edgeAction =
-                        WindowEdgeAction.RESIZE |
-                        WindowEdgeAction.RESIZE_RIGHT;
-                }
-                if (this._isEdge(WindowEdgeAction.RESIZE)) {
-                    // 1/3 from top|bottom
-                    if (this._startPos.y <= wThirdY) {
-                        this._edgeAction |= WindowEdgeAction.RESIZE_TOP;
-                    }
-                    else if (this._startPos.y >= w34Y) {
-                        this._edgeAction |= WindowEdgeAction.RESIZE_BOTTOM;
-                    }
-                }
-            }
-        }
-        if (!this._isEdge(WindowEdgeAction.RESIZE)) {
-            if (allowMove && this._startPos.y <= wTop + topEdge) {
-                if (this._targetWindow.allows_move() &&
-                    !this._targetWindow.get_maximized()) {
-                    // Mouse in top side of window
-                    this._edgeAction = WindowEdgeAction.MOVE;
-                }
-            }
-        }
-
-        return Clutter.EVENT_STOP;
-    }
-
-    // On swipe gesture updated no targetWindow
-    _swipeUpdateNoWindow() {
-        if (this._isOnOverview()) {
-            return Clutter.EVENT_STOP;
-        }
-        let threshold = this._gestureThreshold();
-        let absX = Math.abs(this._movePos.x);
-        let absY = Math.abs(this._movePos.y);
-
-        // Gesture still undefined
-        if (this._edgeAction == WindowEdgeAction.NONE) {
-            // Move Value
-            if (absX >= threshold || absY >= threshold) {
-                let gestureValue = 0;
-                let isVertical = false;
-                if (absX > absY) {
-                    // Horizontal Swipe
-                    if (this._movePos.x < 0 - threshold) {
-                        gestureValue = -1;
-                        this._edgeAction = WindowEdgeAction.WAIT_GESTURE |
-                            WindowEdgeAction.GESTURE_HORIZONTAL;
-
-                    }
-                    else if (this._movePos.x > threshold) {
-                        gestureValue = 1;
-                        this._edgeAction = WindowEdgeAction.WAIT_GESTURE |
-                            WindowEdgeAction.GESTURE_HORIZONTAL;
-                    }
-                }
-                else {
-                    // Vertical Swipe
-                    if (this._movePos.y < 0 - threshold) {
-                        gestureValue = -1;
-                        this._edgeAction = WindowEdgeAction.WAIT_GESTURE |
-                            WindowEdgeAction.GESTURE_VERTICAL;
-                        isVertical = true;
-                    }
-                    else if (this._movePos.y > threshold) {
-                        gestureValue = 1;
-                        this._edgeAction = WindowEdgeAction.WAIT_GESTURE |
-                            WindowEdgeAction.GESTURE_VERTICAL;
-                        isVertical = true;
-                    }
-                }
-                if (gestureValue != 0) {
-                    // Reset Move Position
-                    this._movePos.x = 0;
-                    this._movePos.y = 0;
-
-                    // isVertical
-                    let focusWindow = global.display.get_focus_window();
-                    if (focusWindow) {
-                        let listWin = [];
-                        if (isVertical) {
-                            // All Windows
-                            listWin = global.display.list_all_windows();
-                        }
-                        else {
-                            // Windows in workspace only
-                            listWin = focusWindow
-                                .get_workspace().list_windows();
-                        }
-                        let indexAct = listWin.indexOf(focusWindow);
-                        if (indexAct > -1) {
-                            let nextWin = indexAct + gestureValue;
-                            if (nextWin < 0) {
-                                nextWin = listWin.length - 1;
-                            }
-                            else if (nextWin >= listWin.length) {
-                                nextWin = 0;
-                            }
-                            listWin[nextWin].activate(
-                                global.get_current_time()
-                            );
-                        }
-                    }
-                }
-            }
-        }
-        return Clutter.EVENT_STOP;
-    }
-
-    // On swipe gesture updated
-    _swipeUpdate1(dx, dy) {
-        // Moving coordinat
-        this._movePos.x += dx;
-        this._movePos.y += dy;
-
-        // Ignore if no target window
-        if (this._targetWindow == null) {
-            return this._swipeUpdateNoWindow();
-        }
-
-        // Ignore if no edge action (will not happened btw)
-        if (this._edgeAction == WindowEdgeAction.NONE) {
-            this._clearVars();
-            return Clutter.EVENT_PROPAGATE;
-        }
-
-        // Configs
-        let allowResize = this._getEnableResize();
-        let allowMove = this._getEnableMove();
-        let allowMaxSnap = this._getEnableMaxSnap();
-        let allowMoveSnap = this._getEnableMoveSnap();
-
-        // Check edge flags
-        if (this._isEdge(WindowEdgeAction.MOVE)) {
-            if (!allowMove) {
-                // Will not happening
-                return Clutter.EVENT_STOP;
-            }
-            this._activateWindow();
-
-            // Move cursor pointer
-            this._movePointer(
-                dx, dy
-            );
-
-            let edge = this._edgeSize();
-            let mX = this._monitorArea.x;
-            let mY = this._monitorArea.y;
-            let mW = this._monitorArea.width;
-            let mR = mX + mW;
-
-            // let [pointerX, pointerY, pointerZ] = global.get_pointer();
-            let hedge = edge / 2;
-            let winX = this._startWinArea.x + this._movePos.x;
-            let winY = this._startWinArea.y + this._movePos.y;
-            let winR = winX + this._startWinArea.width;
-
-            // Move action
-            this._targetWindow.move_frame(
-                true,
-                winX, winY
-            );
-
-            if (allowMoveSnap && winX < mX) {
-                this._showPreview(
-                    this._monitorArea.x,
-                    this._monitorArea.y,
-                    this._monitorArea.width / 2,
-                    this._monitorArea.height
-                );
-                this._edgeAction = WindowEdgeAction.MOVE
-                    | WindowEdgeAction.MOVE_SNAP_LEFT;
-            }
-            else if (allowMoveSnap && winR > mR) {
-                this._showPreview(
-                    this._monitorArea.x + (this._monitorArea.width / 2),
-                    this._monitorArea.y,
-                    this._monitorArea.width / 2,
-                    this._monitorArea.height
-                );
-                this._edgeAction = WindowEdgeAction.MOVE
-                    | WindowEdgeAction.MOVE_SNAP_RIGHT;
-            }
-            else if (allowMoveSnap && winY < mY) {
-                this._showPreview(
-                    this._monitorArea.x,
-                    this._monitorArea.y,
-                    this._monitorArea.width,
-                    this._monitorArea.height
-                );
-                this._edgeAction = WindowEdgeAction.MOVE
-                    | WindowEdgeAction.MOVE_SNAP_TOP;
-            }
-            else {
-                this._edgeAction = WindowEdgeAction.MOVE;
-                this._hidePreview();
-            }
-        }
-        else if (this._isEdge(WindowEdgeAction.RESIZE)) {
-            if (!allowResize) {
-                // Will not happening
-                return Clutter.EVENT_STOP;
-            }
-
-            this._activateWindow();
-
-            // Move cursor pointer
-            this._movePointer(
-                (this._isEdge(WindowEdgeAction.RESIZE_LEFT) ||
-                    this._isEdge(WindowEdgeAction.RESIZE_RIGHT)) ? dx : 0,
-                (this._isEdge(WindowEdgeAction.RESIZE_TOP) ||
-                    this._isEdge(WindowEdgeAction.RESIZE_BOTTOM)) ? dy : 0
-            );
-
-            // Resize actions
-            let tX = this._startWinArea.x;
-            let tY = this._startWinArea.y;
-            let tW = this._startWinArea.width;
-            let tH = this._startWinArea.height;
-
-            if (this._isEdge(WindowEdgeAction.RESIZE_BOTTOM)) {
-                tH += this._movePos.y;
-            }
-            else if (this._isEdge(WindowEdgeAction.RESIZE_TOP)) {
-                tY += this._movePos.y;
-                tH -= this._movePos.y;
-            }
-            if (this._isEdge(WindowEdgeAction.RESIZE_RIGHT)) {
-                tW += this._movePos.x;
-            }
-            else if (this._isEdge(WindowEdgeAction.RESIZE_LEFT)) {
-                tX += this._movePos.x;
-                tW -= this._movePos.x;
-            }
-
-            let tR = tX + tW;
-            let tB = tY + tH;
-
-            let mX = this._monitorArea.x;
-            let mY = this._monitorArea.y;
-            let mW = this._monitorArea.width;
-            let mH = this._monitorArea.height;
-            let mR = mX + mW;
-            let mB = mY + mH;
-
-            // edge
-            if (tX < mX) {
-                tX = mX;
-                tW = tR - tX;
-            }
-            if (tY < mY) {
-                tY = mY;
-                tH = tB - tY;
-            }
-            if (tR > mR) {
-                tW = mR - tX;
-            }
-            if (tB > mB) {
-                tH = mB - tY;
-            }
-
-
-            // Resize Window
-            this._targetWindow.move_resize_frame(
-                true,
-                tX, tY, tW, tH
-            );
-        }
-        else if (this._isEdge(WindowEdgeAction.WAIT_GESTURE)) {
-            let threshold = this._gestureThreshold();
-            let absX = Math.abs(this._movePos.x);
-            let absY = Math.abs(this._movePos.y);
-
-            if (!this._edgeGestured) {
-                if (absX >= threshold || absY >= threshold) {
-                    if (absX > absY) {
-                        if (this._movePos.x < 0 - threshold) {
-                            if (!this._getHorizontalSwipeMode()) {
-                                this._edgeAction |=
-                                    WindowEdgeAction.GESTURE_LEFT;
-                                this._edgeGestured = true;
-                            }
-                            else {
-                                this._edgeAction = WindowEdgeAction.NONE;
-                                this._targetWindow = null;
-                                return this._swipeUpdateNoWindow();
-                            }
-                        }
-                        else if (this._movePos.x > threshold) {
-                            if (!this._getHorizontalSwipeMode()) {
-                                // if (this._workspaceHavePrev()) {
-                                this._edgeAction |=
-                                    WindowEdgeAction.GESTURE_RIGHT;
-                                this._edgeGestured = true;
-                                // }
-                            }
-                            else {
-                                this._edgeAction = WindowEdgeAction.NONE;
-                                this._targetWindow = null;
-                                return this._swipeUpdateNoWindow();
-                            }
-                        }
-                    }
-                    else {
-                        if (this._movePos.y < 0 - threshold) {
-                            this._edgeAction |= WindowEdgeAction.GESTURE_UP;
-                            this._edgeGestured = true;
-                        }
-                        else if (this._movePos.y > threshold) {
-                            if (this._targetWindow.is_fullscreen() ||
-                                this._targetWindow.get_maximized()) {
-                                this._edgeAction |=
-                                    WindowEdgeAction.GESTURE_DOWN;
-                                this._edgeGestured = true;
-                            }
-                            else {
-                                if (allowMove &&
-                                    this._targetWindow.allows_move()) {
-                                    this._edgeAction = WindowEdgeAction.MOVE;
-                                }
-                            }
-                        }
-                    }
-                }
-                if (this._edgeGestured) {
-                    /* Reset move position */
-                    this._movePos.x = this._movePos.y = 0;
-                }
-            }
-            else {
-                let cancelThreshold = this._gestureCancelThreshold();
-                let resetGesture = 0;
-                let threshold2x = threshold * 2;
-                /* Reset Gesture Detection */
-                if (this._isEdge(WindowEdgeAction.GESTURE_LEFT)) {
-                    if (this._movePos.x > cancelThreshold) {
-                        resetGesture = 1;
-                    }
-                }
-                else if (this._isEdge(WindowEdgeAction.GESTURE_RIGHT)) {
-                    if (this._movePos.x < 0 - cancelThreshold) {
-                        resetGesture = 1;
-                    }
-                }
-                else if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
-                    if (this._movePos.y > cancelThreshold) {
-                        resetGesture = 1;
-                    }
-                    else if (!this._targetWindow.is_fullscreen() &&
-                        (this._targetWindow.get_maximized()
-                            != Meta.MaximizeFlags.BOTH)) {
-                        // Tile Left / Right if not maximize / fullscreen
-                        if (allowMaxSnap &&
-                            this._movePos.x <= 0 - threshold2x) {
-                            this._edgeAction |=
-                                WindowEdgeAction.GESTURE_UP_LEFT;
-                        }
-                        else if (allowMaxSnap &&
-                            this._movePos.x >= threshold2x) {
-                            this._edgeAction |=
-                                WindowEdgeAction.GESTURE_UP_RIGHT;
-                        }
-                        else {
-                            this._edgeAction = WindowEdgeAction.GESTURE_UP |
-                                WindowEdgeAction.WAIT_GESTURE;
-                        }
-                        resetGesture = 2;
-                    }
-                }
-                else if (this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
-                    if (this._movePos.y < 0 - cancelThreshold) {
-                        resetGesture = 1;
-                    }
-                }
-                if (resetGesture == 1) {
-                    this._hidePreview();
-                    this._edgeAction = WindowEdgeAction.WAIT_GESTURE;
-                }
-                else if (resetGesture == 2) {
-                    /* Reset Y only */
-                    this._movePos.y = 0;
-                    if (this._movePos.x < 0 - threshold2x) {
-                        this._movePos.x = 0 - (threshold2x + 5);
-                    }
-                    else if (this._movePos.x > threshold2x) {
-                        this._movePos.x = threshold2x + 5;
-                    }
-                }
-                else {
-                    /* Reset move position */
-                    this._movePos.x = this._movePos.y = 0;
-                }
-            }
-
-            if (this._edgeGestured) {
-                this._activateWindow();
-                if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
-                    if (allowMaxSnap &&
-                        this._isEdge(WindowEdgeAction.GESTURE_UP_LEFT)) {
-                        this._showPreview(
-                            this._monitorArea.x,
-                            this._monitorArea.y,
-                            this._monitorArea.width / 2,
-                            this._monitorArea.height
-                        );
-                    }
-                    else if (allowMaxSnap &&
-                        this._isEdge(WindowEdgeAction.GESTURE_UP_RIGHT)) {
-                        this._showPreview(
-                            this._monitorArea.x + (this._monitorArea.width / 2),
-                            this._monitorArea.y,
-                            this._monitorArea.width / 2,
-                            this._monitorArea.height
-                        );
-                    }
-                    else {
-                        this._showPreview(
-                            this._monitorArea.x,
-                            this._monitorArea.y,
-                            this._monitorArea.width,
-                            this._monitorArea.height
-                        );
-                    }
-                }
-                else if (this._isEdge(WindowEdgeAction.GESTURE_LEFT)) {
-                    this._showPreview(
-                        this._monitorArea.x
-                        + this._monitorArea.width
-                        - this._startWinArea.width,
-                        this._startWinArea.y,
-                        this._startWinArea.width,
-                        this._startWinArea.height
-                    );
-                }
-                else if (this._isEdge(WindowEdgeAction.GESTURE_RIGHT)) {
-                    this._showPreview(
-                        this._monitorArea.x,
-                        this._startWinArea.y,
-                        this._startWinArea.width,
-                        this._startWinArea.height
-                    );
-                }
-                else if (this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
-                    this._showPreview(
-                        this._monitorArea.x + (this._monitorArea.width / 4),
-                        this._monitorArea.y + (this._monitorArea.height / 4),
-                        this._monitorArea.width / 2,
-                        this._monitorArea.height / 2
-                    );
-                }
-            }
-        }
-
-        return Clutter.EVENT_STOP;
-    }
-
-    // On swipe gesture ended
-    _swipeEnd1() {
-        /* No target window? return directly */
-        if (this._targetWindow == null) {
-            this._clearVars();
-            return Clutter.EVENT_STOP;
-        }
-
-        // Configs
-        let allowMaxSnap = this._getEnableMaxSnap();
-        let allowMoveSnap = this._getEnableMoveSnap();
-
-        /* Check Gestures */
-        if (this._isEdge(WindowEdgeAction.WAIT_GESTURE)) {
-            if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
-                // Maximize / Fullscreen
-                if (this._targetWindow.get_maximized() ==
-                    Meta.MaximizeFlags.BOTH) {
-                    if (!this._targetWindow.is_fullscreen()) {
-                        if (this._getEnableFullscreen()) {
-                            this._targetWindow.make_fullscreen();
-                        }
-                    }
-                    else {
-                        this._targetWindow.unmake_fullscreen();
-                    }
-                }
-                else if (this._targetWindow.can_maximize()) {
-                    if (allowMaxSnap &&
-                        this._isEdge(WindowEdgeAction.GESTURE_UP_LEFT)) {
-                        this._setSnapWindow(0);
-                    }
-                    else if (allowMaxSnap &&
-                        this._isEdge(WindowEdgeAction.GESTURE_UP_RIGHT)) {
-                        this._setSnapWindow(1);
-                    }
-                    else {
-                        this._targetWindow.maximize(Meta.MaximizeFlags.BOTH);
-                    }
-                }
-            }
-            else if (this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
-                // Un-Fullscreen & Un-Maximize
-                if (this._targetWindow.is_fullscreen()) {
-                    this._targetWindow.unmake_fullscreen();
-                }
-                else if (this._targetWindow.get_maximized()) {
-                    this._targetWindow.unmaximize(
-                        Meta.MaximizeFlags.BOTH
-                    );
-                }
-            }
-            else if (this._isEdge(WindowEdgeAction.GESTURE_LEFT)) {
-                // Move to right workspace
-                this._moveWindowWorkspace(1);
-            }
-            else if (this._isEdge(WindowEdgeAction.GESTURE_RIGHT)) {
-                // Move to left workspace
-                this._moveWindowWorkspace(0);
-            }
-        }
-        else if (allowMoveSnap && this._isEdge(WindowEdgeAction.MOVE)) {
-            if (this._isEdge(WindowEdgeAction.MOVE_SNAP_TOP)) {
-                if (this._targetWindow.can_maximize()) {
-                    this._resetWinPos();
-                    this._targetWindow.maximize(Meta.MaximizeFlags.BOTH);
-                }
-            }
-            else if (this._isEdge(WindowEdgeAction.MOVE_SNAP_LEFT)) {
-                this._resetWinPos();
-                this._setSnapWindow(0);
-            }
-            else if (this._isEdge(WindowEdgeAction.MOVE_SNAP_RIGHT)) {
-                this._resetWinPos();
-                this._setSnapWindow(1);
-            }
-        }
-        this._clearVars();
-
-        return Clutter.EVENT_STOP;
-    }
-
-
-
-
-
-
-
-
     // Swipe window move handler
     _swipeUpdateMove() {
-        let allowMoveSnap = this._getEnableMoveSnap();
         this._activateWindow();
+        let allowMoveSnap = this._getEnableMoveSnap();
         // Move calculation
         let mX = this._monitorArea.x;
         let mY = this._monitorArea.y;
@@ -1550,45 +884,53 @@ class Manager {
             this._targetWindow.allows_move()) {
             // Edge cursor position detection
             if (this._startPos.y >= wBottom - edge) {
-                // Cursor on bottom of window
-                this._edgeAction =
-                    WindowEdgeAction.RESIZE |
-                    WindowEdgeAction.RESIZE_BOTTOM;
+                if (this._startPos.y <= wBottom) {
+                    // Cursor on bottom of window
+                    this._edgeAction =
+                        WindowEdgeAction.RESIZE |
+                        WindowEdgeAction.RESIZE_BOTTOM;
 
-                // 1/3 from left|right
-                if (this._startPos.x <= wThirdX) {
-                    this._edgeAction |= WindowEdgeAction.RESIZE_LEFT;
-                }
-                else if (this._startPos.x >= w34X) {
-                    this._edgeAction |= WindowEdgeAction.RESIZE_RIGHT;
+                    // 1/3 from left|right
+                    if (this._startPos.x <= wThirdX) {
+                        this._edgeAction |= WindowEdgeAction.RESIZE_LEFT;
+                    }
+                    else if (this._startPos.x >= w34X) {
+                        this._edgeAction |= WindowEdgeAction.RESIZE_RIGHT;
+                    }
                 }
             }
             else {
-                if (this._startPos.x <= wLeft + edge) {
-                    // Cursor on left side of window
-                    this._edgeAction =
-                        WindowEdgeAction.RESIZE |
-                        WindowEdgeAction.RESIZE_LEFT;
-                }
-                else if (this._startPos.x >= wRight - edge) {
-                    // Cursor on right side of window
-                    this._edgeAction =
-                        WindowEdgeAction.RESIZE |
-                        WindowEdgeAction.RESIZE_RIGHT;
-                }
-                if (this._isEdge(WindowEdgeAction.RESIZE)) {
-                    // 1/3 from top|bottom
-                    if (this._startPos.y <= wThirdY) {
-                        this._edgeAction |= WindowEdgeAction.RESIZE_TOP;
+                if (this._startPos.x >= wLeft && this._startPos.x <= wRight) {
+                    if (this._startPos.x <= wLeft + edge) {
+                        // Cursor on left side of window
+                        this._edgeAction =
+                            WindowEdgeAction.RESIZE |
+                            WindowEdgeAction.RESIZE_LEFT;
                     }
-                    else if (this._startPos.y >= w34Y) {
-                        this._edgeAction |= WindowEdgeAction.RESIZE_BOTTOM;
+                    else if (this._startPos.x >= wRight - edge) {
+                        // Cursor on right side of window
+                        this._edgeAction =
+                            WindowEdgeAction.RESIZE |
+                            WindowEdgeAction.RESIZE_RIGHT;
+                    }
+                    if (this._isEdge(WindowEdgeAction.RESIZE)) {
+                        // 1/3 from top|bottom
+                        if (this._startPos.y <= wThirdY) {
+                            this._edgeAction |= WindowEdgeAction.RESIZE_TOP;
+                        }
+                        else if (this._startPos.y >= w34Y) {
+                            this._edgeAction |= WindowEdgeAction.RESIZE_BOTTOM;
+                        }
                     }
                 }
             }
         }
         if (this._swipeIsWin && !this._isEdge(WindowEdgeAction.RESIZE)) {
-            if (allowMove && this._startPos.y <= wTop + topEdge) {
+            if (allowMove &&
+                this._startPos.x <= wRight &&
+                this._startPos.x >= wLeft &&
+                this._startPos.y >= wTop &&
+                this._startPos.y <= wTop + topEdge) {
                 if (this._targetWindow.allows_move() &&
                     !this._targetWindow.get_maximized()) {
                     // Mouse in top side of window
@@ -1725,7 +1067,8 @@ class Manager {
                 this._hooked = true;
             }
             if (this._movePos.y > 0) {
-                let movey = this._movePos.y - (threshold * 6);
+                let movey = this._movePos.y - (this._swipeIsWin ?
+                    threshold : (threshold * 6));
                 if (movey < 0) {
                     movey = 0;
                 }
@@ -1744,12 +1087,14 @@ class Manager {
                         this._edgeAction |= WindowEdgeAction.GESTURE_LEFT;
                         this._gesture.velocity = this._velocityInit();
                         this._velocityAppend(this._gesture.velocity, 0);
+                        this._movePos.x = 0 - combineTrigger;
                         return this._swipeUpdate(0, 0);
                     }
                     else if (this._movePos.x >= combineTrigger) {
                         this._edgeAction |= WindowEdgeAction.GESTURE_RIGHT;
                         this._gesture.velocity = this._velocityInit();
                         this._velocityAppend(this._gesture.velocity, 0);
+                        this._movePos.x = combineTrigger;
                         return this._swipeUpdate(0, 0);
                     }
                 }
@@ -1764,7 +1109,7 @@ class Manager {
                     this._edgeAction = WindowEdgeAction.GESTURE_UP;
                     this._gesture.velocity = this._velocityInit();
                     this._velocityAppend(this._gesture.velocity, 0);
-                    this._movePos.y = 0 - trigger;
+                    // this._movePos.y = 0 - trigger;
                     return this._swipeUpdate(0, 0);
                 }
             }
@@ -1777,7 +1122,7 @@ class Manager {
                     this._edgeAction = WindowEdgeAction.GESTURE_DOWN;
                     this._gesture.velocity = this._velocityInit();
                     this._velocityAppend(this._gesture.velocity, 0);
-                    this._movePos.y = trigger;
+                    // this._movePos.y = trigger;
                     return this._swipeUpdate(0, 0);
                 }
             }
@@ -1862,6 +1207,9 @@ class Manager {
         if (this._gesture.action) {
             let aid = this._actionIdGet(this._gesture.action);
             if (aid) {
+                if (aid >= 50) {
+                    this._activateWindow();
+                }
                 this._runAction(aid, 0, this._gesture.progress);
             }
             this._gesture.action_cmp = this._gesture.action;
@@ -1871,6 +1219,32 @@ class Manager {
     }
 
     _swipeEnd() {
+        // Check move snap
+        if (this._isEdge(WindowEdgeAction.MOVE)) {
+            this._hidePreview();
+            if (this._isEdge(WindowEdgeAction.MOVE_SNAP_TOP)) {
+                if (this._targetWindow.can_maximize()) {
+                    this._resetWinPos();
+                    this._targetWindow.maximize(Meta.MaximizeFlags.BOTH);
+                }
+            }
+            else if (this._isEdge(WindowEdgeAction.MOVE_SNAP_LEFT)) {
+                this._resetWinPos();
+                this._setSnapWindow(0);
+            }
+            else if (this._isEdge(WindowEdgeAction.MOVE_SNAP_RIGHT)) {
+                this._resetWinPos();
+                this._setSnapWindow(1);
+            }
+            this._hooked = false;
+            this._clearVars();
+            return Clutter.EVENT_STOP;
+        }
+
+        // Gesture Release
+        let retval = (!this._swipeIsWin && !this._hooked) ?
+            Clutter.EVENT_PROPAGATE : Clutter.EVENT_STOP;
+        this._hooked = false;
         if (this._gesture.action) {
             let aid = this._actionIdGet(this._gesture.action);
             if (aid) {
@@ -1887,30 +1261,19 @@ class Manager {
                             }
                         );
                         this._clearVars();
-                        return Clutter.EVENT_STOP;
+                        return retval;
                     }
                 }
                 this._runAction(aid, 1, this._gesture.progress);
             }
         }
 
-        if (!this._swipeIsWin && !this._hooked) {
-            this._clearVars();
-            return Clutter.EVENT_PROPAGATE;
-        }
-
-        this._hooked = false;
         this._clearVars();
-        return Clutter.EVENT_STOP;
+        return retval;
     }
 
     // Swipe Handler
     _swipeEventHandler(actor, event) {
-        // Only process configured finger gesture
-        // if (event.get_touchpad_gesture_finger_count()
-        //     != this._gestureNumFinger())
-        //     return Clutter.EVENT_PROPAGATE;
-
         let numfingers = event.get_touchpad_gesture_finger_count();
         if (numfingers != 3 && numfingers != 4) {
             return Clutter.EVENT_PROPAGATE;
@@ -1921,7 +1284,6 @@ class Manager {
             case Clutter.TouchpadGesturePhase.BEGIN:
                 // Begin event
                 return this._swipeBegin(numfingers);
-            // return this._swipeBegin1();
 
             case Clutter.TouchpadGesturePhase.UPDATE:
                 // Update / move event
@@ -1930,13 +1292,8 @@ class Manager {
                     dx * this._getAcceleration(),
                     dy * this._getAcceleration()
                 );
-            // return this._swipeUpdate1(
-            //     dx * this._getAcceleration(),
-            //     dy * this._getAcceleration()
-            // );
         }
         return this._swipeEnd();
-        // return this._swipeEnd1();
     }
 
     // Get Current Action Id
@@ -2107,7 +1464,12 @@ class Manager {
             case 9: cfg_name = "pinch3-out"; break;
             case 10: cfg_name = "pinch4-in"; break;
             case 11: cfg_name = "pinch4-out"; break;
-            default: return 0;
+            default:
+                if (type >= 50 && type <= 53) {
+                    // Max & Snap
+                    return type;
+                }
+                return 0;
         }
         return this._settings.get_int(cfg_name);
     }
@@ -2853,27 +2215,160 @@ class Manager {
             this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_F2]);
         }
 
+        else if (id >= 50 && id <= 53) {
+            // Maximize, Fullscreen, Snap & Restore
+            let activeWin = global.display.get_focus_window();
+            if (!activeWin || this._isOnOverview()) {
+                return; // Ignore on overview & no active window
+            }
+            if (this._isWindowBlacklist(activeWin)) {
+                return; // Ignore blacklisted
+            }
+
+            let winCanMax = activeWin.allows_move() && activeWin.can_maximize();
+            let winIsMaximized = activeWin.get_maximized();
+            let winMaxed = Meta.MaximizeFlags.BOTH == winIsMaximized;
+            let winIsFullscreen = activeWin.is_fullscreen();
+            let allowFullscreen = this._getEnableFullscreen();
+            let ui = 0; // find action id
+            if (id < 53) {
+                // Maximize
+                if (winMaxed) {
+                    if (winIsFullscreen) {
+                        ui = 5; // un-fullscreen
+                    }
+                    else if (allowFullscreen) {
+                        ui = 4; // fullscreen
+                    }
+                }
+                else if (winCanMax) {
+                    // 1. Max, 2. Snap Left, 3. Snap Right
+                    ui = id - 49;
+                }
+            }
+            else if (winIsFullscreen) {
+                ui = 5; // un-fullscreen
+            }
+            else if (winIsMaximized) {
+                ui = 6; // restore
+            }
+            let wid = "wmax_state" + ui;
+
+            if (ui) {
+                if (!state) {
+                    if (ui == 4) {
+                        // fullsccreen
+                        activeWin?.get_compositor_private()
+                            .set_pivot_point(0.5, 1);
+                        activeWin.get_compositor_private().scale_y =
+                            1.0 + (progress * 0.05);
+                    }
+                    else if (ui >= 5) {
+                        // un-fullsccreen / restore
+                        activeWin?.get_compositor_private()
+                            .set_pivot_point(0.5, 1);
+                        activeWin.get_compositor_private().scale_y =
+                            1.0 - (progress * 0.05);
+                        if (ui == 6) {
+                            activeWin.get_compositor_private().scale_x =
+                                1.0 - (progress * 0.05);
+                        }
+                    }
+                    else if (ui <= 3) {
+                        if (progress >= 0.2) {
+                            if (!this._actionWidgets[wid]) {
+                                let moarea = activeWin
+                                    .get_work_area_current_monitor();
+                                if (ui == 1) {
+                                    // max
+                                    this._showPreview(
+                                        moarea.x,
+                                        moarea.y,
+                                        moarea.width,
+                                        moarea.height
+                                    );
+                                }
+                                else if (ui == 2) {
+                                    // snap left
+                                    this._showPreview(
+                                        moarea.x,
+                                        moarea.y,
+                                        moarea.width / 2,
+                                        moarea.height
+                                    );
+                                }
+                                else if (ui == 3) {
+                                    // snap right
+                                    this._showPreview(
+                                        moarea.x
+                                        + (moarea.width / 2),
+                                        moarea.y,
+                                        moarea.width / 2,
+                                        moarea.height
+                                    );
+                                }
+                                this._actionWidgets[wid] = 1;
+                            }
+                        }
+                        else if (this._actionWidgets[wid]) {
+                            this._hidePreview();
+                            this._actionWidgets[wid] = 0;
+                        }
+                    }
+                }
+                else {
+                    if (ui <= 3) {
+                        // max, snap
+                        if (progress >= 0.2) {
+                            if (ui == 1) {
+                                activeWin.maximize(Meta.MaximizeFlags.BOTH);
+                            }
+                            else if (ui == 2) {
+                                this._setSnapWindow(0);
+                            }
+                            else if (ui == 3) {
+                                this._setSnapWindow(1);
+                            }
+                        }
+                        this._hidePreview();
+                        this._actionWidgets[wid] = 0;
+                    }
+                    else {
+                        // resize back
+                        activeWin?.get_compositor_private().ease({
+                            duration: Math.round(200 * progress),
+                            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                            scale_y: 1,
+                            scale_x: 1,
+                            onStopped: () => {
+                                activeWin?.get_compositor_private()
+                                    .set_pivot_point(0, 0);
+                            }
+                        });
+                        if (progress >= 0.5) {
+                            if (ui == 4) {
+                                // fullscreen
+                                activeWin.make_fullscreen();
+                            }
+                            else if (ui == 5) {
+                                // un-fullscreen
+                                activeWin.unmake_fullscreen();
+                            }
+                            else if (ui == 6) {
+                                // restore
+                                activeWin.unmaximize(
+                                    Meta.MaximizeFlags.BOTH
+                                );
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
         //
         // End Of Actions
         //
-
-        /*
-        let stk=Main.wm._workspaceAnimation._swipeTracker;
-        stk.emit('begin',global.display.get_primary_monitor());
-        stk.emit('update',0.5);
-        stk.emit('end',100,1.0);
- 
-        Main.wm._workspaceAnimation._swipeTracker.orientation=Clutter.Orientation.HORIZONTAL;
-        Main.wm._workspaceAnimation._swipeTracker.emit('begin',global.display.get_primary_monitor());
-        Main.wm._workspaceAnimation._swipeTracker.emit('update',-0.5);
-        Main.wm._workspaceAnimation._swipeTracker.emit('end',100,-1.0);
- 
-        Main.wm._workspaceAnimation._swipeTracker.orientation=Clutter.Orientation.HORIZONTAL;
-        Main.wm._workspaceAnimation._swipeTracker.emit('begin',global.display.get_primary_monitor());
-        Main.wm._workspaceAnimation._swipeTracker.emit('update',0.5);
-        Main.wm._workspaceAnimation._swipeTracker.emit('end',100,1.0);
- 
-        */
     }
 }
 
