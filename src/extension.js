@@ -493,6 +493,30 @@ class Manager {
         );
     }
 
+    // Find Target Window
+    _findPointerWindow() {
+        let target = null;
+        let [pointerX, pointerY, pointerZ] = global.get_pointer();
+        let currActor = global.stage.get_actor_at_pos(
+            Clutter.PickMode.REACTIVE, pointerX, pointerY
+        );
+        if (currActor) {
+            // Find root window for current actor
+            let currWindow = currActor.get_parent();
+            let i = 0;
+            while (currWindow && !currWindow.get_meta_window) {
+                currWindow = currWindow.get_parent();
+                if (!currWindow || (++i > 10)) {
+                    currWindow = null;
+                    break;
+                }
+            }
+            // Set meta window as target window to manage
+            target = currWindow?.get_meta_window();
+        }
+        return target;
+    }
+
     // Get Alt Tabs List
     _getWindowTabList() {
         let wm = global.workspace_manager;
@@ -811,24 +835,7 @@ class Manager {
             this._tapHoldWin = null;
         }
         else if (!this._getUseActiveWindow() && !this._getTapHoldMove()) {
-            // Get actor in current mouse position
-            let currActor = global.stage.get_actor_at_pos(
-                Clutter.PickMode.REACTIVE, pointerX, pointerY
-            );
-            if (currActor) {
-                // Find root window for current actor
-                let currWindow = currActor.get_parent();
-                let i = 0;
-                while (currWindow && !currWindow.get_meta_window) {
-                    currWindow = currWindow.get_parent();
-                    if (!currWindow || (++i > 10)) {
-                        currWindow = null;
-                        break;
-                    }
-                }
-                // Set meta window as target window to manage
-                this._targetWindow = currWindow?.get_meta_window();
-            }
+            this._targetWindow = this._findPointerWindow();
         }
         if (!this._targetWindow) {
             // Get Active Window
@@ -1451,8 +1458,17 @@ class Manager {
                 this._holdTo = this.setTimeout(function () {
                     log("Hold Exec");
                     me._holdTo = 0;
-                    let activeWin = global.display.get_focus_window();
+                    let activeWin = null;
+                    if (!me._getUseActiveWindow()) {
+                        activeWin = me._findPointerWindow();
+                    }
+                    if (!activeWin) {
+                        activeWin = global.display.get_focus_window();
+                    }
                     if (activeWin) {
+                        activeWin.activate(
+                            global.get_current_time()
+                        );
                         me._tapHold = numfingers;
                         me._tapHoldWin = activeWin;
                         activeWin.get_compositor_private()
@@ -1476,7 +1492,7 @@ class Manager {
                             }
                         });
                     }
-                }, 250);
+                }, 200);
             }
             else {
                 if (this._holdTo) {

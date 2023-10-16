@@ -8,7 +8,7 @@
             <summary>Use 3 Fingers</summary>
         </key>
         <key name="use-active-window" type="b">
-            <default>false</default>
+            <default>true</default>
             <summary>Handle Active Window</summary>
         </key>
         <key name="taphold-move" type="b">
