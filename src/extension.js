@@ -367,7 +367,6 @@ class Manager {
         const period = lastTime - firstTime;
         return totalDelta / period;
     }
-
     _velocityFling(vel, curr, max, maxframe, cb) {
         let ctime = this._tick();
         this._velocityFlingTime = ctime;
@@ -595,6 +594,9 @@ class Manager {
             this._targetWindow.activate(global.get_current_time());
         }
         return pos;
+    }
+    _isDynamicWorkspace() {
+        return Meta.prefs_get_dynamic_workspaces();
     }
 
     // Have Left Workspace
@@ -1932,7 +1934,7 @@ class Manager {
 
         else if ((id == 6) || (id == 7)) {
             //
-            // NEXT & PREVIOUS WINDOW SWITCHING
+            // SEND WINDOW LEFT/RIGHT WORKSPACE
             //
             if (this._isOnOverview()) {
                 return; // Ignore on overview
@@ -1946,29 +1948,40 @@ class Manager {
             // Init indicator
             if (!ui) {
                 ui = -1;
-                // Cancel cache win timeout
+                let isDynamic = this._isDynamicWorkspace();
                 activeWin = global.display.get_focus_window();
                 let inserted = 0;
                 if (activeWin) {
                     let wsid = activeWin.get_workspace().index();
                     let tsid = wsid;
                     if (prv) {
-                        if (wsid == 0) {
-                            let wpl = activeWin.get_workspace().list_windows();
-                            inserted = wpl.length;
-                            if (inserted > 1) {
-                                // Check for blacklisted windows
-                                for (var i = 0; i < inserted; i++) {
-                                    if (this._isWindowBlacklist(wpl[i])) {
-                                        inserted--;
+                        if (isDynamic) {
+                            if (wsid == 0) {
+                                let wpl = activeWin.get_workspace().list_windows();
+                                inserted = wpl.length;
+                                if (inserted > 1) {
+                                    // Check for blacklisted windows
+                                    for (var i = 0; i < inserted; i++) {
+                                        if (this._isWindowBlacklist(wpl[i])) {
+                                            inserted--;
+                                        }
                                     }
                                 }
+                                wsid = tsid = 1;
                             }
-                            wsid = tsid = 1;
+                        }
+                        else {
+                            if (wsid == 0) {
+                                inserted = 1;
+                            }
                         }
                         tsid--;
                     }
                     else {
+                        if (!isDynamic && (wsid >=
+                            global.workspace_manager.get_n_workspaces() - 1)) {
+                            inserted = 1;
+                        }
                         tsid++;
                     }
                     // Make sure move left from left-most workspace only
