@@ -142,6 +142,9 @@ class Manager {
         this._edgeGestured = 0;
         this._swipeIsWin = false;
         this._isActiveWin = false;
+        this._tapHold = 0;
+        this._tapHoldWin = null;
+        // _getTapHoldMove()
 
         // Pinch
         this._gesture = {
@@ -463,6 +466,9 @@ class Manager {
     }
     _getPinchEnabled() {
         return this._settings.get_boolean("pinch-enable");
+    }
+    _getTapHoldMove() {
+        return this._settings.get_boolean("taphold-move");
     }
 
     // Is On Overview
@@ -798,7 +804,11 @@ class Manager {
         this._isActiveWin = false;
         this._targetWindow = null;
 
-        if (!this._getUseActiveWindow()) {
+        if (this._tapHoldWin) {
+            this._targetWindow = this._tapHoldWin;
+            this._tapHoldWin = null;
+        }
+        else if (!this._getUseActiveWindow() && !this._getTapHoldMove()) {
             // Get actor in current mouse position
             let currActor = global.stage.get_actor_at_pos(
                 Clutter.PickMode.REACTIVE, pointerX, pointerY
@@ -918,14 +928,24 @@ class Manager {
             }
         }
         if (this._swipeIsWin && !this._isEdge(WindowEdgeAction.RESIZE)) {
-            if (allowMove &&
+            let setmove = false;
+            if (this._getTapHoldMove()) {
+                if (this._tapHold) {
+                    // Tap and hold
+                    setmove = true;
+                }
+            }
+            else if (allowMove &&
                 this._startPos.x <= wRight &&
                 this._startPos.x >= wLeft &&
                 this._startPos.y >= wTop &&
                 this._startPos.y <= wTop + topEdge) {
+                // Mouse in top side of window
+                setmove = true;
+            }
+            if (setmove) {
                 if (this._targetWindow.allows_move() &&
                     !this._targetWindow.get_maximized()) {
-                    // Mouse in top side of window
                     this._edgeAction = WindowEdgeAction.MOVE;
                 }
             }
@@ -980,7 +1000,22 @@ class Manager {
                         this._edgeAction = WindowEdgeAction.GESTURE_DOWN;
                         if (this._swipeIsWin) {
                             let allowMove = this._getEnableMove();
-                            if (allowMove &&
+                            let holdMove = this._getTapHoldMove();
+
+                            // if (holdMove && this._tapHold) {
+                            //     // this._tapHold
+                            //     this._edgeGestured = allowMove ? 0 : 1;
+                            // }
+                            // else 
+                            if (!allowMove || holdMove) {
+                                if (!this._targetWindow.get_maximized()) {
+                                    this._edgeGestured = 1;
+                                }
+                                else {
+                                    this._edgeGestured = 0;
+                                }
+                            }
+                            else if (
                                 !this._edgeGestured &&
                                 !this._targetWindow.is_fullscreen() &&
                                 !this._targetWindow.get_maximized() &&
@@ -1404,8 +1439,69 @@ class Manager {
         return this._pinchEnd();
     }
 
+    _tapHoldGesture(state, numfingers) {
+        let isWin = (numfingers == this._gestureNumFinger());
+        log("HoldEv(" + state + "/" + numfingers + ")");
+        if (isWin && this._getTapHoldMove()) {
+            if (state) {
+                let me = this;
+                log("Hold Start");
+                this._holdTo = this.setTimeout(function () {
+                    log("Hold Exec");
+                    me._holdTo = 0;
+                    let activeWin = global.display.get_focus_window();
+                    if (activeWin) {
+                        me._tapHold = numfingers;
+                        me._tapHoldWin = activeWin;
+                        activeWin.get_compositor_private()
+                            .set_pivot_point(0.5, 0.5);
+                        activeWin.get_compositor_private().ease({
+                            duration: 100,
+                            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                            scale_y: 1.05,
+                            scale_x: 1.05,
+                            onStopped: () => {
+                                activeWin?.get_compositor_private().ease({
+                                    duration: 100,
+                                    mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                                    scale_y: 1,
+                                    scale_x: 1,
+                                    onStopped: () => {
+                                        activeWin?.get_compositor_private()
+                                            .set_pivot_point(0, 0);
+                                    }
+                                });
+                            }
+                        });
+                    }
+                }, 250);
+            }
+            else {
+                if (this._holdTo) {
+                    log("Hold Cancel");
+                    this.clearTimeout(this._holdTo);
+                }
+                log("Hold Release");
+                this._holdTo = 0;
+            }
+        }
+        return Clutter.EVENT_PROPAGATE;
+    }
+    _tapHoldHandler(actor, event) {
+        // Process gestures state
+        let numfingers = event.get_touchpad_gesture_finger_count();
+        if (numfingers != 3 && numfingers != 4) {
+            return Clutter.EVENT_PROPAGATE;
+        }
+        if (event.get_gesture_phase() == Clutter.TouchpadGesturePhase.BEGIN) {
+            return this._tapHoldGesture(1, numfingers);
+        }
+        return this._tapHoldGesture(0, numfingers);
+    }
+
     // Touch Event Handler
     _touchpadEvent(actor, event) {
+        // log("_touchpadEvent = " + event.type());
         // Process pinch
         if (event.type() == Clutter.EventType.TOUCHPAD_PINCH)
             return this._pinchEventHandler(actor, event);
@@ -1413,6 +1509,10 @@ class Manager {
         // Process swipe
         if (event.type() == Clutter.EventType.TOUCHPAD_SWIPE)
             return this._swipeEventHandler(actor, event);
+
+        // Process tap hold
+        if (event.type() == Clutter.EventType.TOUCHPAD_HOLD)
+            return this._tapHoldHandler(actor, event);
 
         return Clutter.EVENT_PROPAGATE;
     }
@@ -2202,6 +2302,9 @@ class Manager {
                     }
                     else if (allowFullscreen) {
                         ui = 4; // fullscreen
+                    }
+                    else {
+                        ui = 6; // if not allow fullscreen (restore)
                     }
                 }
                 else if (winCanMax) {

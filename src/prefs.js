@@ -40,18 +40,24 @@ export default class extends ExtensionPreferences {
             ""
         );
         this._createSwitch(
-            gestures, "pinch-enable",
-            "Enable pinch gestures",
-            ""
-        );
-        this._createSwitch(
             gestures, "use-active-window",
             "Use active window",
             "If true, gesture will control active window rather than window on current pointer. This will disable resize function"
         );
+        this._createSwitch(
+            gestures, "taphold-move",
+            "Tap and hold to move/resize window",
+            "Trigger move window by tap and hold rather than by swipe down"
+        );
+
 
         // Function Settings
-        const fn = new Adw.PreferencesGroup({ title: "Functions" });
+        const fn = new Adw.PreferencesGroup({ title: "Active Functions" });
+        this._createSwitch(
+            fn, "pinch-enable",
+            "Enable pinch gestures",
+            ""
+        );
         this._createSwitch(
             fn, "fn-resize",
             "Enable resize window",
@@ -111,31 +117,52 @@ export default class extends ExtensionPreferences {
 
         ];
 
-        const act = new Adw.PreferencesGroup({ title: "Actions" });
-        this._createCombo(act, "swipe4-left",
-            "Swipe left (4 fingers)", "", action_list);
-        this._createCombo(act, "swipe4-right",
-            "Swipe right (4 fingers)", "", action_list);
-        this._createCombo(act, "swipe4-updown",
-            "Swipe up > down (4 fingers)", "", action_list);
+        let act1 = new Adw.PreferencesGroup({ title: "4 Fingers Actions" });
+        this._createCombo(act1, "swipe4-left",
+            "Swipe left", "", action_list);
+        this._createCombo(act1, "swipe4-right",
+            "Swipe right", "", action_list);
+        this._createCombo(act1, "swipe4-updown",
+            "Swipe down",
+            "Swipe up > down if Tap and hold to move/resize window disabled",
+            action_list);
 
-        this._createCombo(act, "swipe3-down",
-            "Swipe down (3 fingers)", "", action_list);
-        this._createCombo(act, "swipe3-left",
-            "Swipe down > left (3 fingers)", "", action_list);
-        this._createCombo(act, "swipe3-right",
-            "Swipe down > right (3 fingers)", "", action_list);
-        this._createCombo(act, "swipe3-downup",
-            "Swipe down > up (3 fingers)", "", action_list);
+        let act2 = new Adw.PreferencesGroup({ title: "3 Fingers Actions" });
+        this._createCombo(act2, "swipe3-down",
+            "Swipe down", "", action_list);
+        this._createCombo(act2, "swipe3-left",
+            "Swipe down > left", "", action_list);
+        this._createCombo(act2, "swipe3-right",
+            "Swipe down > right", "", action_list);
+        this._createCombo(act2, "swipe3-downup",
+            "Swipe down > up", "", action_list);
 
-        this._createCombo(act, "pinch3-in",
+        let updateActionTitle = function (isSwap) {
+            if (isSwap) {
+                act1.set_title('3 Fingers Actions');
+                act2.set_title('4 Fingers Actions');
+            }
+            else {
+                act2.set_title('3 Fingers Actions');
+                act1.set_title('4 Fingers Actions');
+            }
+        }
+        updateActionTitle(this.getSettings().get_boolean('three-finger'));
+        this.getSettings().connect('changed::three-finger',
+            (settings, key) => {
+                updateActionTitle(settings.get_boolean(key));
+            });
+
+        const act3 = new Adw.PreferencesGroup({ title: "Pinch Actions" });
+        this._createCombo(act3, "pinch3-in",
             "Pinch-in 3 fingers", "", action_list);
-        this._createCombo(act, "pinch3-out",
+        this._createCombo(act3, "pinch3-out",
             "Pinch-out 3 fingers", "", action_list);
-        this._createCombo(act, "pinch4-in",
+        this._createCombo(act3, "pinch4-in",
             "Pinch-in 4 fingers", "", action_list);
-        this._createCombo(act, "pinch4-out",
+        this._createCombo(act3, "pinch4-out",
             "Pinch-out 4 fingers", "", action_list);
+
 
         // Tweaks Settings
         const tweaks = new Adw.PreferencesGroup({ title: "Tweaks" });
@@ -203,8 +230,10 @@ export default class extends ExtensionPreferences {
 
         const page = new Adw.PreferencesPage();
         page.add(gestures);
+        page.add(act1);
+        page.add(act2);
+        page.add(act3);
         page.add(fn);
-        page.add(act);
         page.add(tweaks);
         page.add(about);
         page.add(gnuSoftwareGroup);
