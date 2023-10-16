@@ -62,6 +62,7 @@
             <summary>Swipe 4 Fingers Right</summary>
             <range min="0" max="30"/>
         </key>
+
         <key type="i" name="swipe3-down">
             <default>3</default>
             <summary>Swipe 3 Fingers Down</summary>
@@ -75,6 +76,17 @@
         <key type="i" name="swipe3-right">
             <default>4</default>
             <summary>Swipe 3 Fingers Right</summary>
+            <range min="0" max="30"/>
+        </key>
+
+        <key type="i" name="swipe4-updown">
+            <default>0</default>
+            <summary>Swipe 4 Fingers Up+Down</summary>
+            <range min="0" max="30"/>
+        </key>
+        <key type="i" name="swipe3-downup">
+            <default>0</default>
+            <summary>Swipe 3 Fingers Down+Up</summary>
             <range min="0" max="30"/>
         </key>
 

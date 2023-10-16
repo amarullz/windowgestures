@@ -124,13 +124,17 @@ export default class extends ExtensionPreferences {
             "Swipe left (4 fingers)", "", action_list);
         this._createCombo(act, "swipe4-right",
             "Swipe right (4 fingers)", "", action_list);
+        this._createCombo(act, "swipe4-updown",
+            "Swipe up -> down (4 fingers)", "", action_list);
 
         this._createCombo(act, "swipe3-down",
             "Swipe down (3 fingers)", "", action_list);
         this._createCombo(act, "swipe3-left",
-            "Swipe left (3 fingers)", "", action_list);
+            "Swipe down -> left (3 fingers)", "", action_list);
         this._createCombo(act, "swipe3-right",
-            "Swipe right (3 fingers)", "", action_list);
+            "Swipe down -> right (3 fingers)", "", action_list);
+        this._createCombo(act, "swipe3-downup",
+            "Swipe down -> up (3 fingers)", "", action_list);
 
         this._createCombo(act, "pinch3-in",
             "Pinch-in 3 fingers", "", action_list);

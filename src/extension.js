@@ -1630,23 +1630,24 @@ class Manager {
         if (this._edgeAction == WindowEdgeAction.NONE) {
             if (absX >= trigger || absY >= trigger) {
                 if (absX > absY) {
-                    if (this._movePos.x < 0 - trigger) {
+                    if (this._movePos.x <= 0 - trigger) {
                         this._edgeAction = WindowEdgeAction.GESTURE_LEFT;
                     }
-                    else if (this._movePos.x > trigger) {
+                    else if (this._movePos.x >= trigger) {
                         this._edgeAction = WindowEdgeAction.GESTURE_RIGHT;
                     }
                     this._movePos.y = 0;
                 }
                 else {
-                    if (this._movePos.y < 0 - trigger) {
+                    if (this._movePos.y <= 0 - trigger) {
                         this._edgeAction = WindowEdgeAction.GESTURE_UP;
                     }
-                    else if (this._movePos.y > trigger) {
+                    else if (this._movePos.y >= trigger) {
                         this._edgeAction = WindowEdgeAction.GESTURE_DOWN;
                         if (this._swipeIsWin) {
                             let allowMove = this._getEnableMove();
                             if (allowMove &&
+                                !this._edgeGestured &&
                                 !this._targetWindow.is_fullscreen() &&
                                 !this._targetWindow.get_maximized() &&
                                 this._targetWindow.allows_move()) {
@@ -1657,6 +1658,7 @@ class Manager {
                     }
                     this._movePos.x = 0;
                 }
+                this._edgeGestured = true;
                 this._gesture.velocity = this._velocityInit();
                 this._velocityAppend(this._gesture.velocity, 0);
             }
@@ -1667,8 +1669,7 @@ class Manager {
         let horiz = 0;
         let gname = "none";
         if (this._isEdge(WindowEdgeAction.GESTURE_LEFT)) {
-            if (!this._swipeIsWin &&
-                !this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
+            if (!this._swipeIsWin && !this._hooked) {
                 log("Gesture Left 3 Finger Cancel");
                 return Clutter.EVENT_PROPAGATE;
             }
@@ -1677,6 +1678,10 @@ class Manager {
                 this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
                 xmove = this._movePos.x + combineTrigger;
             }
+            else if (!this._swipeIsWin) {
+                log("Gesture Left 3 Finger Cancel");
+                return Clutter.EVENT_PROPAGATE;
+            }
             if (xmove < 0) {
                 prog = Math.abs(xmove) / target;
             }
@@ -1684,14 +1689,17 @@ class Manager {
             horiz = 1;
         }
         else if (this._isEdge(WindowEdgeAction.GESTURE_RIGHT)) {
-            if (!this._swipeIsWin &&
-                !this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
+            if (!this._swipeIsWin && !this._hooked) {
                 return Clutter.EVENT_PROPAGATE;
             }
             let xmove = this._movePos.x - trigger;
             if (this._isEdge(WindowEdgeAction.GESTURE_UP) ||
                 this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
                 xmove = this._movePos.x - combineTrigger;
+            }
+            else if (!this._swipeIsWin) {
+                log("Gesture Left 3 Finger Cancel");
+                return Clutter.EVENT_PROPAGATE;
             }
             if (xmove > 0) {
                 prog = xmove / target;
@@ -1700,7 +1708,7 @@ class Manager {
             horiz = 2;
         }
         else if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
-            if (!this._swipeIsWin) {
+            if (!this._swipeIsWin && !this._hooked) {
                 return Clutter.EVENT_PROPAGATE;
             }
             if (this._movePos.y < 0) {
@@ -1728,21 +1736,20 @@ class Manager {
         }
 
         if (vert) {
-            if (absX >= trigger) {
+            if (absX >= trigger && ((vert == 1 && this._swipeIsWin) ||
+                (vert == 2 && !this._swipeIsWin))) {
                 if (vert == 1 || prog == 0) {
                     // Combination gesture (Down + Left/Right)
                     if (this._movePos.x <= 0 - combineTrigger) {
                         this._edgeAction |= WindowEdgeAction.GESTURE_LEFT;
                         this._gesture.velocity = this._velocityInit();
                         this._velocityAppend(this._gesture.velocity, 0);
-                        this._movePos.y = 0;
                         return this._swipeUpdate(0, 0);
                     }
                     else if (this._movePos.x >= combineTrigger) {
                         this._edgeAction |= WindowEdgeAction.GESTURE_RIGHT;
                         this._gesture.velocity = this._velocityInit();
                         this._velocityAppend(this._gesture.velocity, 0);
-                        this._movePos.y = 0;
                         return this._swipeUpdate(0, 0);
                     }
                 }
@@ -1752,12 +1759,12 @@ class Manager {
             if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
                 gname = "UP+" + gname;
                 vert = 1;
-
                 // Reset to single gesture
                 if (Math.abs(this._movePos.x) < combineTrigger) {
                     this._edgeAction = WindowEdgeAction.GESTURE_UP;
                     this._gesture.velocity = this._velocityInit();
                     this._velocityAppend(this._gesture.velocity, 0);
+                    this._movePos.y = 0 - trigger;
                     return this._swipeUpdate(0, 0);
                 }
             }
@@ -1770,9 +1777,29 @@ class Manager {
                     this._edgeAction = WindowEdgeAction.GESTURE_DOWN;
                     this._gesture.velocity = this._velocityInit();
                     this._velocityAppend(this._gesture.velocity, 0);
+                    this._movePos.y = trigger;
                     return this._swipeUpdate(0, 0);
                 }
             }
+        }
+
+        // Switch gestures direction
+        if (
+            (vert == 1 && (this._movePos.y > 0 - trigger)) ||
+            (vert == 2 && (this._movePos.y < trigger)) ||
+            (horiz == 1 && (this._movePos.x > 0 - trigger)) ||
+            (horiz == 2 && (this._movePos.x < trigger))
+        ) {
+            if (vert) {
+                this._movePos.x = 0;
+            }
+            if (horiz) {
+                this._movePos.y = 0;
+            }
+            this._edgeAction = WindowEdgeAction.NONE;
+            this._gesture.velocity = this._velocityInit();
+            this._velocityAppend(this._gesture.velocity, 0);
+            return this._swipeUpdate(0, 0);
         }
 
         // Limit progress
@@ -1784,10 +1811,34 @@ class Manager {
 
         // Set action
         if (vert == 0) {
-            this._gesture.action = horiz;
+            this._gesture.action = horiz; // left=1, right=2
+            gname += " | " + ((horiz == 1) ? "4left" : "4right");
         }
-        else if (vert == 2) {
-            this._gesture.action = (horiz == 0) ? 3 : ((horiz == 1) ? 4 : 5);
+        else {
+            if (!this._swipeIsWin) {
+                if (horiz && vert == 2) {
+                    // down + horiz
+                    this._gesture.action = horiz + 4; // left=5, right=6
+                    gname += " | " + ((horiz == 1) ? "3dn-left" : "3dn-right");
+                }
+                else {
+                    // vert
+                    this._gesture.action = (vert == 2) ? 4 : 7; // d=4, u=7
+                    gname += " | " + ((vert == 1) ? "3up" : "3down");
+                }
+            }
+            else {
+                if (horiz && vert == 1) {
+                    // up + horiz
+                    this._gesture.action = horiz + 50; // left=51, right=52
+                    gname += " | " + ((horiz == 1) ? "4up-left" : "4up-right");
+                }
+                else {
+                    // vert
+                    this._gesture.action = (vert == 2) ? 3 : 50; // d=50, u=3
+                    gname += " | " + ((vert == 1) ? "4up" : "4down");
+                }
+            }
         }
 
         // Cancel action
@@ -1804,7 +1855,7 @@ class Manager {
         this._gesture.progress = prog;
         this._velocityAppend(this._gesture.velocity,
             this._gesture.progress);
-        log("Gesture " + gname + " = " + prog);
+        log("Gesture " + gname + " (" + this._gesture.action + ")= " + prog);
 
         if (this._gesture.action) {
             let aid = this._actionIdGet(this._gesture.action);
@@ -1892,8 +1943,8 @@ class Manager {
             if (this._gesture.action != this._gesture.action_cmp) {
                 this._gesture.action_id = this._actionIdGet(
                     (this._gesture.fingers == 3) ?
-                        this._gesture.action + 5 :
-                        this._gesture.action + 7
+                        this._gesture.action + 7 :
+                        this._gesture.action + 9
                 );
                 this._gesture.action_cmp = this._gesture.action;
             }
@@ -1933,8 +1984,8 @@ class Manager {
                 // Send Cancel State
                 let aid = this._actionIdGet(
                     (this._gesture.fingers == 3) ?
-                        this._gesture.action_cmp + 2 :
-                        this._gesture.action_cmp + 4
+                        this._gesture.action_cmp + 7 :
+                        this._gesture.action_cmp + 9
                 );
                 if (aid) {
                     this._runAction(aid, 1, 0);
@@ -2044,14 +2095,16 @@ class Manager {
         switch (type) {
             case 1: cfg_name = "swipe4-left"; break;
             case 2: cfg_name = "swipe4-right"; break;
-            case 3: cfg_name = "swipe3-down"; break;
-            case 4: cfg_name = "swipe3-left"; break;
-            case 5: cfg_name = "swipe3-right"; break;
+            case 3: cfg_name = "swipe4-updown"; break;
+            case 4: cfg_name = "swipe3-down"; break;
+            case 5: cfg_name = "swipe3-left"; break;
+            case 6: cfg_name = "swipe3-right"; break;
+            case 7: cfg_name = "swipe3-downup"; break;
 
-            case 6: cfg_name = "pinch3-in"; break;
-            case 7: cfg_name = "pinch3-out"; break;
-            case 8: cfg_name = "pinch4-in"; break;
-            case 9: cfg_name = "pinch4-out"; break;
+            case 8: cfg_name = "pinch3-in"; break;
+            case 9: cfg_name = "pinch3-out"; break;
+            case 10: cfg_name = "pinch4-in"; break;
+            case 11: cfg_name = "pinch4-out"; break;
             default: return 0;
         }
         return this._settings.get_int(cfg_name);
