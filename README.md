@@ -6,33 +6,52 @@ Support only for GNOME 45.
 ## Installation
 [![Get from GNOME Extension](./gext.svg)](https://extensions.gnome.org/extension/6343/window-gestures/)
 
-## Features
- * Maximize window
- * Make window fullscreen
- * Snap window to left/right
- * Move window to left/right workspaces
- * Move & resize window
- * Customizable edges & title size area
- * Customizable number of fingers for gesture (3 or 4 fingers)
- * Customizable gesture activate & cancel threshold
- * Customizable gesture acceleration
- * Customizable horizontal swipe for switch windows or workspace
 
-## Usage
- * **Pointer on center of window** / **Window is Maximized**
-    * **Swipe Down** to move window
-    * **Swipe Up** to maximize window
-    * **Swipe Up** to make a window fullscreen / exit fullscreen
-    * **Swipe Up then Left/Right** to snap window into left/right screen
-    * **Swipe Left/Right** to move into left/right workspace
- * **Pointer on top of window** to move window
- * **Pointer on top left/right of window** to resize vertically + horizontally
- * **Pointer on center left/right of window** to resize horizontally
- * **Pointer on bottom left/right of window**  to resize vertically + horizontally
- * **Pointer on bottom center of window** to resize vertically
- * **Pointer outside window** will switch between windows
-    * **Swipe Horizontally** switch between windows in same workspace
-    * **Swipe Vertically** switch between all windows
+## Features
+ * Customizable actions for gestures
+ * Support `3` or `4` fingers swipe, pinch & hold
+ * Swappable 3 / 4 fingers
+ * Enable/disable functions in settings
+ * With kinetic gesture
+ * With adaptive transition interpolable with gesture state
+
+## Window Gestures
+ * Swipe `4` Fingers `up` - **Maximize, fullscreen, restore**
+ * Swipe `4` Fingers `up + left` or `right` - **Snap window left/right**
+ * Swipe `4` Fingers Down - **Move window** `Tap & Hold Disable`
+ * Tap & Hold `4` Fingers - **Move/resize window**
+
+## Configurable Gestures
+ * Swipe 4 Fingers Left, Right, Down
+ * Swipe 3 Fingers Down, Down+Left, Down+Right, Down+Up
+ * Pinch In/Out 3/4 Fingers
+ * Tap &amp; Hold to move/resize window
+
+## Actions
+ * Minimize window
+ * Close window
+ * Show desktop
+ * Next window
+ * Previous window
+ * Send window left
+ * Send window right
+ * Back
+ * Forward
+ * Brightness up
+ * Brightness down
+ * Volume up
+ * Volume down
+ * Mute
+ * Media play
+ * Media next
+ * Media previous
+ * Alt+Tab switch
+ * Overview
+ * Application Grid
+ * Quick settings
+ * Notification
+ * Run (Alt+F2)
+
 
 ## Demo
  [![Improve Touchpad GNOME Experience with Window Gesture](https://img.youtube.com/vi/HHDjraAE6sc/0.jpg)](https://www.youtube.com/watch?v=HHDjraAE6sc)
