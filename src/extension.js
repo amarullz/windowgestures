@@ -1893,6 +1893,7 @@ class Manager {
                         listActor = this._createUi(
                             "wgs-winswitch", lX, lY, lW, lH
                         );
+                        listActor.set_pivot_point(0.5, 1);
                         listActor.opacity = 0;
                         listActor.scale_x = 0.5;
                         listActor.scale_y = 0.5;
