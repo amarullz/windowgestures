@@ -43,7 +43,7 @@
 
 
         <key type="i" name="ui-theme">
-            <default>2</default>
+            <default>0</default>
             <summary>Window Switch Indicator Position</summary>
             <range min="0" max="2"/>
         </key>
