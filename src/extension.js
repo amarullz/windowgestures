@@ -1881,54 +1881,55 @@ class Manager {
                 if (!wins) {
                     // No last cached
                     wins = this._getWindowTabList();
-
-                    // Create UI
-                    let gsize = Main.layoutManager.uiGroup.get_size();
-                    let pad = 8;
-                    let lW = (pad * 2) + (wins.length * 48);
-                    let lH = (pad * 2) + 32;
-                    let lX = (gsize[0] - lW) / 2;
-                    let lY = gsize[1] - (lH + 32);
-                    log("Switch-Rect = " + lX + "," + lY + "x" + lW + "," + lH);
-                    listActor = this._createUi(
-                        "wgs-winswitch", lX, lY, lW, lH
-                    );
-                    listActor.opacity = 0;
-                    listActor.scale_x = 0.5;
-                    listActor.scale_y = 0.5;
-                    listActor._data = [];
-                    for (var i = 0; i < wins.length; i++) {
-                        let win = wins[i];
-                        let app = this._winmanWinApp(win);
-                        let ico = app.create_icon_texture(32);
-                        ico.add_style_class_name("wgs-winswitch-ico");
-                        // remove_style_class_name
-                        listActor.add_child(ico);
-                        ico.set_size(32, 32);
-                        ico.set_position((pad * 2) + (48 * i), pad);
-                        ico.set_pivot_point(0.5, 0.5);
-                        listActor._data.push(
-                            {
-                                app: app,
-                                win: win,
-                                ico: ico
-                            }
-                        )
-                    }
                     if (wins.length > 1) {
+                        // Create UI
+                        let gsize = Main.layoutManager.uiGroup.get_size();
+                        let pad = 8;
+                        let lW = (pad * 2) + (wins.length * 48);
+                        let lH = (pad * 2) + 32;
+                        let lX = (gsize[0] - lW) / 2;
+                        let lY = gsize[1] - (lH + 32);
+                        log("Switch-Rect = " + lX + "," + lY + "x" + lW + "," + lH);
+                        listActor = this._createUi(
+                            "wgs-winswitch", lX, lY, lW, lH
+                        );
+                        listActor.opacity = 0;
+                        listActor.scale_x = 0.5;
+                        listActor.scale_y = 0.5;
+                        listActor._data = [];
+                        for (var i = 0; i < wins.length; i++) {
+                            let win = wins[i];
+                            let app = this._winmanWinApp(win);
+                            let ico = app.create_icon_texture(32);
+                            ico.add_style_class_name("wgs-winswitch-ico");
+                            // remove_style_class_name
+                            listActor.add_child(ico);
+                            ico.set_size(32, 32);
+                            ico.set_position((pad * 2) + (48 * i), pad);
+                            ico.set_pivot_point(0.5, 0.5);
+                            listActor._data.push(
+                                {
+                                    app: app,
+                                    win: win,
+                                    ico: ico
+                                }
+                            )
+                        }
                         listActor.viewShow({
                             opacity: 255,
                             scale_x: 1,
                             scale_y: 1
                         }, 200);
+
+                        // Reorder for next (below 1s) calls
+                        this._actionWidgets.cacheWinTabList = {
+                            wins: wins,
+                            actor: listActor
+                        };
                     }
-
-
-                    // Reorder for next (below 1s) calls
-                    this._actionWidgets.cacheWinTabList = {
-                        wins: wins,
-                        actor: listActor
-                    };
+                    else {
+                        this._actionWidgets.cacheWinTabList = null;
+                    }
                 }
                 if (wins.length > 1) {
                     ui = { from: wins[0] };
