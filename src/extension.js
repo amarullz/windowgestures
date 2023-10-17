@@ -20,6 +20,7 @@ import Clutter from 'gi://Clutter';
 import Meta from 'gi://Meta';
 import St from 'gi://St';
 import Shell from 'gi://Shell';
+import Gio from 'gi://Gio';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -92,6 +93,11 @@ class Manager {
 
         // action widget holder
         this._actionWidgets = {};
+
+        // Desktop Theme Setting
+        this._isettings = new Gio.Settings({
+            schema: 'org.gnome.desktop.interface'
+        });
     }
 
     // Clear potentially running timeout/interval
@@ -135,6 +141,7 @@ class Manager {
 
         // Cleanup all variables
         this._clearVars();
+        this._isettings = null;
         this._settings = null;
         this._ShaderClass = null;
     }
@@ -248,9 +255,16 @@ class Manager {
         this._swipeMods = [];
     }
 
+    _isDarkTheme() {
+        return (this._isettings.get_string('color-scheme') == 'prefer-dark');
+    }
+
     // Create UI Indicator
     _createUi(ui_class, x, y, w, h, icon, parent) {
         let ui = new St.Widget({ style_class: ui_class });
+        if (this._isDarkTheme()) {
+            ui.add_style_class_name("wgs-dark");
+        }
         ui.set_clip_to_allocation(true);
         ui._icon = null;
         ui._parent = parent ? parent : Main.layoutManager.uiGroup;
