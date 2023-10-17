@@ -169,7 +169,7 @@ class Manager {
         this._isActiveWin = false;
         this._tapHold = 0;
         this._tapHoldWin = null;
-        // _getTapHoldMove()
+        this._tapHoldTick = 0;
 
         // Pinch
         this._gesture = {
@@ -853,6 +853,13 @@ class Manager {
         this._isActiveWin = false;
         this._targetWindow = null;
 
+        // Clear unswipe tap-hold
+        if ((this._tapHoldTick != 1) &&
+            (this._tapHoldTick < this._tick())) {
+            this._tapHold = this._tapHoldTick = 0;
+            this._tapHoldWin = null;
+        }
+
         if (this._tapHoldWin) {
             this._targetWindow = this._tapHoldWin;
             this._tapHoldWin = null;
@@ -1034,11 +1041,6 @@ class Manager {
                             let allowMove = this._getEnableMove();
                             let holdMove = this._getTapHoldMove();
 
-                            // if (holdMove && this._tapHold) {
-                            //     // this._tapHold
-                            //     this._edgeGestured = allowMove ? 0 : 1;
-                            // }
-                            // else 
                             if (!allowMove || holdMove) {
                                 if (!this._targetWindow.get_maximized()) {
                                     this._edgeGestured = 1;
@@ -1479,7 +1481,7 @@ class Manager {
             if (state) {
                 let me = this;
                 this._holdTo = setTimeout(function () {
-                    me._holdTo = 0;
+                    me._tapHold = 0;
                     let activeWin = null;
                     if (!me._getUseActiveWindow()) {
                         activeWin = me._findPointerWindow();
@@ -1493,6 +1495,7 @@ class Manager {
                         );
                         me._tapHold = numfingers;
                         me._tapHoldWin = activeWin;
+                        me._tapHoldTick = 1;
                         activeWin.get_compositor_private()
                             .set_pivot_point(0.5, 0.5);
                         activeWin.get_compositor_private().ease({
@@ -1520,6 +1523,7 @@ class Manager {
                 if (this._holdTo) {
                     clearTimeout(this._holdTo);
                 }
+                this._tapHoldTick = this._tick() + 100;
                 this._holdTo = 0;
             }
         }
