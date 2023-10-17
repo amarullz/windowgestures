@@ -27,6 +27,24 @@
     background-color: rgba(255, 50, 50, .6);
 }
 
+.wgs-winswitch {
+    background-color: rgba(40, 40, 40, 0.8);
+    text-align: center;
+    border-radius: 48px;
+}
+
+.wgs-winswitch .wgs-winswitch-ico {
+    padding: 5px;
+    border-radius: 4px;
+    background-color: rgba(120, 120, 120, 0);
+    transition-property: background-color;
+    transition-duration: 0.3s;
+}
+
+.wgs-winswitch .wgs-winswitch-ico.selected {
+    background-color: rgba(120, 120, 120, 0.75);
+}
+
 .wgs-indicator-keys {
     background-color: rgba(40, 40, 40, 0.75);
     width: 128px;

@@ -19,6 +19,7 @@
 import Clutter from 'gi://Clutter';
 import Meta from 'gi://Meta';
 import St from 'gi://St';
+import Shell from 'gi://Shell';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
@@ -598,6 +599,13 @@ class Manager {
                 Meta.CURRENT_TIME, x, y
             );
         }
+    }
+
+    // window management
+    _winmanWinApp(win) {
+        return Shell.WindowTracker.get_default()
+            .get_window_app(win);
+        // App.create_icon_texture;
     }
 
     // Snap Window
@@ -1858,6 +1866,7 @@ class Manager {
             if (!ui) {
                 ui = -1;
                 let wins = null;
+                let listActor = null;
 
                 // Cancel cache win timeout
                 if (this._actionWidgets.resetWinlist) {
@@ -1866,11 +1875,60 @@ class Manager {
                 }
                 // Get cached window list
                 if (this._actionWidgets.cacheWinTabList) {
-                    wins = this._actionWidgets.cacheWinTabList;
+                    wins = this._actionWidgets.cacheWinTabList?.wins;
+                    listActor = this._actionWidgets.cacheWinTabList?.actor;
                 }
                 if (!wins) {
                     // No last cached
                     wins = this._getWindowTabList();
+
+                    // Create UI
+                    let gsize = Main.layoutManager.uiGroup.get_size();
+                    let pad = 8;
+                    let lW = (pad * 2) + (wins.length * 48);
+                    let lH = (pad * 2) + 32;
+                    let lX = (gsize[0] - lW) / 2;
+                    let lY = gsize[1] - (lH + 32);
+                    log("Switch-Rect = " + lX + "," + lY + "x" + lW + "," + lH);
+                    listActor = this._createUi(
+                        "wgs-winswitch", lX, lY, lW, lH
+                    );
+                    listActor.opacity = 0;
+                    listActor.scale_x = 0.5;
+                    listActor.scale_y = 0.5;
+                    listActor._data = [];
+                    for (var i = 0; i < wins.length; i++) {
+                        let win = wins[i];
+                        let app = this._winmanWinApp(win);
+                        let ico = app.create_icon_texture(32);
+                        ico.add_style_class_name("wgs-winswitch-ico");
+                        // remove_style_class_name
+                        listActor.add_child(ico);
+                        ico.set_size(32, 32);
+                        ico.set_position((pad * 2) + (48 * i), pad);
+                        ico.set_pivot_point(0.5, 0.5);
+                        listActor._data.push(
+                            {
+                                app: app,
+                                win: win,
+                                ico: ico
+                            }
+                        )
+                    }
+                    if (wins.length > 1) {
+                        listActor.viewShow({
+                            opacity: 255,
+                            scale_x: 1,
+                            scale_y: 1
+                        }, 200);
+                    }
+
+
+                    // Reorder for next (below 1s) calls
+                    this._actionWidgets.cacheWinTabList = {
+                        wins: wins,
+                        actor: listActor
+                    };
                 }
                 if (wins.length > 1) {
                     ui = { from: wins[0] };
@@ -1886,8 +1944,21 @@ class Manager {
                     ui.from_actor.set_pivot_point(0.5, 1);
                     ui.into_actor.set_pivot_point(0.5, 1);
 
-                    // Reorder for next (below 1s) calls
-                    this._actionWidgets.cacheWinTabList = wins;
+                    // Set selected target
+                    for (var i = 0; i < listActor._data.length; i++) {
+                        let d = listActor._data[i];
+                        if (d.win == ui.from) {
+                            d.ico.add_style_class_name("selected");
+                            ui.from_ico = d.ico;
+                        }
+                        else if (d.win == ui.into) {
+                            d.ico.remove_style_class_name("selected");
+                            ui.into_ico = d.ico;
+                        }
+                        else {
+                            d.ico.remove_style_class_name("selected");
+                        }
+                    }
                 }
                 this._actionWidgets[wid] = ui;
             }
@@ -1902,11 +1973,15 @@ class Manager {
                         if (!ui.lstate) {
                             ui.into.raise();
                             ui.lstate = 1;
+                            ui.from_ico?.remove_style_class_name("selected");
+                            ui.into_ico?.add_style_class_name("selected");
                         }
                     }
                     else if (ui.lstate) {
                         ui.from.raise();
                         ui.lstate = 0;
+                        ui.from_ico?.add_style_class_name("selected");
+                        ui.into_ico?.remove_style_class_name("selected");
                     }
                 }
                 else {
@@ -1915,15 +1990,21 @@ class Manager {
                             Meta.CURRENT_TIME
                         );
                         if (prv) {
-                            this._actionWidgets.cacheWinTabList.unshift(
-                                this._actionWidgets.cacheWinTabList.pop()
+                            this._actionWidgets.cacheWinTabList.wins.unshift(
+                                this._actionWidgets.cacheWinTabList.wins.pop()
                             );
                         }
                         else {
-                            this._actionWidgets.cacheWinTabList.push(
-                                this._actionWidgets.cacheWinTabList.shift()
+                            this._actionWidgets.cacheWinTabList.wins.push(
+                                this._actionWidgets.cacheWinTabList.wins.shift()
                             );
                         }
+                        ui.from_ico?.remove_style_class_name("selected");
+                        ui.into_ico?.add_style_class_name("selected");
+                    }
+                    else {
+                        ui.from_ico?.add_style_class_name("selected");
+                        ui.into_ico?.remove_style_class_name("selected");
                     }
                     ui.nclose = 0;
                     // Ease Restore
@@ -1963,6 +2044,8 @@ class Manager {
                     let me = this;
                     this._actionWidgets.resetWinlist = setTimeout(
                         function () {
+                            me._actionWidgets
+                                .cacheWinTabList.actor.aniRelease();
                             me._actionWidgets.cacheWinTabList = null;
                             clearTimeout(me._actionWidgets.resetWinlist);
                             me._actionWidgets.resetWinlist = 0;
