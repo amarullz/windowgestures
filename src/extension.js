@@ -1912,19 +1912,21 @@ class Manager {
                         let lH = (pad * 2) + 32;
                         let lX = (gsize[0] - lW) / 2;
                         let lY = 64; // Top
+                        let pivY = 0;
                         if (posCfg == 1) {
                             // Center
                             lY = (gsize[1] - lH) / 2;
+                            pivY = 0.5;
                         }
                         else if (posCfg == 2) {
                             // Bottom
                             lY = gsize[1] - (lH + 64);
+                            pivY = 1;
                         }
-                        log("Switch-Rect = " + lX + "," + lY + "x" + lW + "," + lH);
                         listActor = this._createUi(
                             "wgs-winswitch", lX, lY, lW, lH
                         );
-                        listActor.set_pivot_point(0.5, 1);
+                        listActor.set_pivot_point(0.5, pivY);
                         listActor.opacity = 0;
                         listActor.scale_x = 0.5;
                         listActor.scale_y = 0.5;

@@ -23,6 +23,7 @@
     background-color: rgba(230, 230, 230, 0.8);
     text-align: center;
     border-radius: 48px;
+    border: 1px solid rgba(200, 200, 200, 0.8);
 }
 
 .wgs-winswitch .wgs-winswitch-ico {
@@ -39,15 +40,17 @@
 
 .wgs-dark.wgs-winswitch {
     background-color: rgba(40, 40, 40, 0.8);
+    border-color: rgba(30, 30, 30, 0.8);
 }
 
 /* Key Indicator */
 .wgs-indicator-keys {
-    background-color: rgba(230, 230, 230, 0.75);
+    background-color: rgba(230, 230, 230, 0.8);
     width: 128px;
     height: 128px;
     border-radius: 64px;
     text-align: center;
+    border: 1px solid rgba(200, 200, 200, 0.8);
 }
 
 .wgs-indicator-keys .wgs-widget-icon {
@@ -60,7 +63,8 @@
 
 /* Dark Mode */
 .wgs-dark.wgs-indicator-keys {
-    background-color: rgba(40, 40, 40, 0.75);
+    background-color: rgba(40, 40, 40, 0.8);
+    border-color: rgba(30, 30, 30, 0.8);
 }
 
 .wgs-dark.wgs-indicator-keys .wgs-widget-icon {
