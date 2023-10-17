@@ -153,6 +153,18 @@ export default class extends ExtensionPreferences {
             "Pinch-out 4 fingers", "", action_list);
 
 
+        // Function Settings
+        const ui = new Adw.PreferencesGroup({ title: "User Interface" });
+        this._createCombo(ui, "ui-theme",
+            "UI color scheme", "", [
+            "Follow system", "Light", "Dark"
+        ]);
+        this._createCombo(ui, "winswitch-position",
+            "Window switch ui position", "", [
+            "Top", "Center", "Bottom"
+        ]);
+
+
         // Tweaks Settings
         const tweaks = new Adw.PreferencesGroup({ title: "Tweaks" });
         this._createSpin(tweaks, "edge-size",
@@ -223,6 +235,7 @@ export default class extends ExtensionPreferences {
         page.add(act2);
         page.add(act3);
         page.add(fn);
+        page.add(ui);
         page.add(tweaks);
         page.add(about);
         page.add(gnuSoftwareGroup);

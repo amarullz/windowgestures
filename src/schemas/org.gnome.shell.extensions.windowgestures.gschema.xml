@@ -41,6 +41,18 @@
             <summary>Enable Pinch</summary>
         </key>
 
+
+        <key type="i" name="ui-theme">
+            <default>2</default>
+            <summary>Window Switch Indicator Position</summary>
+            <range min="0" max="2"/>
+        </key>
+        <key type="i" name="winswitch-position">
+            <default>2</default>
+            <summary>Window Switch Indicator Position</summary>
+            <range min="0" max="2"/>
+        </key>
+
         <key type="i" name="swipe4-left">
             <default>7</default>
             <summary>Swipe 4 Fingers Left</summary>

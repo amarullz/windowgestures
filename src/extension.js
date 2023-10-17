@@ -255,8 +255,14 @@ class Manager {
         this._swipeMods = [];
     }
 
+    // Is dark theme?
     _isDarkTheme() {
-        return (this._isettings.get_string('color-scheme') == 'prefer-dark');
+        let uit = this._settings.get_int('ui-theme');
+        if (uit == 0) {
+            return (this._isettings
+                .get_string('color-scheme') == 'prefer-dark');
+        }
+        return (uit == 2);
     }
 
     // Create UI Indicator
@@ -1899,10 +1905,21 @@ class Manager {
                         // Create UI
                         let gsize = Main.layoutManager.uiGroup.get_size();
                         let pad = 8;
+                        let posCfg = this._settings.get_int(
+                            'winswitch-position'
+                        );
                         let lW = (pad * 2) + (wins.length * 48);
                         let lH = (pad * 2) + 32;
                         let lX = (gsize[0] - lW) / 2;
-                        let lY = gsize[1] - (lH + 32);
+                        let lY = 64; // Top
+                        if (posCfg == 1) {
+                            // Center
+                            lY = (gsize[1] - lH) / 2;
+                        }
+                        else if (posCfg == 2) {
+                            // Bottom
+                            lY = gsize[1] - (lH + 64);
+                        }
                         log("Switch-Rect = " + lX + "," + lY + "x" + lW + "," + lH);
                         listActor = this._createUi(
                             "wgs-winswitch", lX, lY, lW, lH
