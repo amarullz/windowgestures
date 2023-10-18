@@ -2406,21 +2406,17 @@ class Manager {
             // ALT+TAB
             this._sendKeyPress([Clutter.KEY_Alt_L, Clutter.KEY_Tab]);
         }
-        else if (id == 19) {
+        else if (id == 19 || id == 20) {
             if (!state || progress < 1.0) {
                 // Ignore if non end
                 return;
             }
-            // Overview (Super)
-            this._sendKeyPress([Clutter.KEY_Super_L]);
-        }
-        else if (id == 20) {
-            if (!state || progress < 1.0) {
-                // Ignore if non end
-                return;
+            if (id == 19) {
+                Main.overview.show();
             }
-            // Show Apps (Super+A)
-            this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_A + _LCASE]);
+            else {
+                Main.overview.showApps();
+            }
         }
         else if (id == 21) {
             if (!state || progress < 1.0) {
