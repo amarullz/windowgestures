@@ -271,7 +271,7 @@ class Manager {
         if (this._isDarkTheme()) {
             ui.add_style_class_name("wgs-dark");
         }
-        ui.set_clip_to_allocation(true);
+        // ui.set_clip_to_allocation(true);
         ui._icon = null;
         ui._parent = parent ? parent : Main.layoutManager.uiGroup;
         if (icon) {

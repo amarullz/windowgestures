@@ -20,10 +20,8 @@
 
 /* Window Switching Indicator */
 .wgs-winswitch {
-    background-color: rgba(230, 230, 230, 0.8);
     text-align: center;
     border-radius: 48px;
-    border: 1px solid rgba(200, 200, 200, 0.8);
 }
 
 .wgs-winswitch .wgs-winswitch-ico {
@@ -38,19 +36,12 @@
     background-color: rgba(120, 120, 120, 0.6);
 }
 
-.wgs-dark.wgs-winswitch {
-    background-color: rgba(40, 40, 40, 0.8);
-    border-color: rgba(30, 30, 30, 0.8);
-}
-
 /* Key Indicator */
 .wgs-indicator-keys {
-    background-color: rgba(230, 230, 230, 0.8);
     width: 128px;
     height: 128px;
     border-radius: 64px;
     text-align: center;
-    border: 1px solid rgba(200, 200, 200, 0.8);
 }
 
 .wgs-indicator-keys .wgs-widget-icon {
@@ -61,23 +52,12 @@
     color: #000;
 }
 
-/* Dark Mode */
-.wgs-dark.wgs-indicator-keys {
-    background-color: rgba(40, 40, 40, 0.8);
-    border-color: rgba(30, 30, 30, 0.8);
-}
-
-.wgs-dark.wgs-indicator-keys .wgs-widget-icon {
-    color: #fff;
-}
-
 /* Back & Forward */
 .wgs-indicator-backforward {
-    border: 5px solid #249;
-    background-color: #fff;
     width: 64px;
     height: 64px;
     border-radius: 32px;
+    border: 1px solid;
 }
 
 .wgs-indicator-backforward .wgs-widget-icon {
@@ -85,14 +65,32 @@
     width: 32px;
     height: 32px;
     margin: 16px;
+}
+
+/* Light Mode */
+.wgs-winswitch,
+.wgs-indicator-keys,
+.wgs-indicator-backforward {
+    background-color: rgba(230, 230, 230, 0.8);
+    border: 1px solid rgba(240, 240, 240, 0.85);
+    box-shadow: 0px 3px 5px rgba(0, 0, 0, 0.2);
+}
+
+.wgs-indicator-backforward .wgs-widget-icon,
+.wgs-indicator-keys .wgs-widget-icon {
     color: #000;
 }
 
+
+/* Dark Mode */
+.wgs-dark.wgs-winswitch,
+.wgs-dark.wgs-indicator-keys,
 .wgs-dark.wgs-indicator-backforward {
-    border-color: #249;
-    background-color: #222;
+    background-color: rgba(40, 40, 40, 0.8);
+    border-color: rgba(50, 50, 50, 0.85);
 }
 
-.wgs-dark.wgs-indicator-backforward .wgs-widget-icon {
+.wgs-dark.wgs-indicator-backforward .wgs-widget-icon,
+.wgs-dark.wgs-indicator-keys .wgs-widget-icon {
     color: #fff;
 }
