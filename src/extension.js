@@ -734,6 +734,24 @@ class Manager {
     // Swipe window move handler
     _swipeUpdateMove() {
         this._activateWindow();
+
+        // gnome-shell-extension-tiling-assistant support
+        if (this._targetWindow.isTiled) {
+            let urct = this._targetWindow.untiledRect;
+            if (urct) {
+                let r = urct._rect;
+                this._startWinArea.x = r.x;
+                this._startWinArea.y = r.y;
+                this._startWinArea.width = r.width;
+                this._startWinArea.height = r.height;
+                // this._targetWindow.move_resize_frame(
+                //     true,
+                //     r.x, r.y, r.width, r.height
+                // );
+                this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_Down]);
+            }
+        }
+
         let allowMoveSnap = this._getEnableMoveSnap();
         // Move calculation
         let mX = this._monitorArea.x;
@@ -880,6 +898,7 @@ class Manager {
         let allowMove = this._getEnableMove();
         this._isActiveWin = false;
         this._targetWindow = null;
+        let isTapHoldAction = false;
 
         // Clear unswipe tap-hold
         if ((this._tapHoldTick != 1) &&
@@ -891,6 +910,7 @@ class Manager {
         if (this._tapHoldWin) {
             this._targetWindow = this._tapHoldWin;
             this._tapHoldWin = null;
+            isTapHoldAction = true;
         }
         else if (!this._getUseActiveWindow() && !this._getTapHoldMove()) {
             this._targetWindow = this._findPointerWindow();
@@ -950,7 +970,8 @@ class Manager {
         // Check allow resize
         if (this._swipeIsWin && !this._isActiveWin && allowResize &&
             this._targetWindow.allows_resize() &&
-            this._targetWindow.allows_move()) {
+            this._targetWindow.allows_move() &&
+            !this._targetWindow.isTiled && !isTapHoldAction) {
             // Edge cursor position detection
             if (this._startPos.y >= wBottom - edge) {
                 if (this._startPos.y <= wBottom) {
@@ -1229,6 +1250,7 @@ class Manager {
         }
 
         // Limit progress
+        let oprog = prog;
         if (prog >= 1) {
             prog = 1.0;
         }
@@ -1284,7 +1306,7 @@ class Manager {
                 if (aid >= 50) {
                     this._activateWindow();
                 }
-                this._runAction(aid, 0, this._gesture.progress);
+                this._runAction(aid, 0, this._gesture.progress, oprog);
             }
             this._gesture.action_cmp = this._gesture.action;
         }
@@ -1614,7 +1636,7 @@ class Manager {
     }
 
     // Run Action
-    _runAction(id, state, progress) {
+    _runAction(id, state, progress, oprog) {
         const _LCASE = 32;
         if (id == 1) {
             //
@@ -1957,6 +1979,8 @@ class Manager {
 
                         // Reorder for next (below 1s) calls
                         this._actionWidgets.cacheWinTabList = {
+                            sel: 0,
+                            first: wins[0],
                             wins: wins,
                             actor: listActor
                         };
@@ -1969,9 +1993,11 @@ class Manager {
                     ui = { from: wins[0] };
                     if (prv) {
                         ui.into = wins[wins.length - 1];
+                        ui.nsel = -1;
                     }
                     else {
                         ui.into = wins[1];
+                        ui.nsel = 1;
                     }
                     ui.lstate = 0;
                     ui.from_actor = ui.from.get_compositor_private();
@@ -1999,21 +2025,27 @@ class Manager {
             }
             if (ui && ui != -1) {
                 if (!state) {
-                    ui.from_actor.opacity = 255 - Math.round(80 * progress);
-                    ui.from_actor.scale_y =
-                        ui.from_actor.scale_x = 1.0 - (0.05 * progress);
-                    ui.into_actor.scale_y =
-                        ui.into_actor.scale_x = 1.0 + (0.05 * progress);
+                    try {
+                        ui.from_actor.opacity = 255 - Math.round(80 * progress);
+                        ui.from_actor.scale_y =
+                            ui.from_actor.scale_x = 1.0 - (0.05 * progress);
+                        ui.into_actor.scale_y =
+                            ui.into_actor.scale_x = 1.0 + (0.05 * progress);
+                    } catch (e) { }
                     if (progress > 0.8) {
                         if (!ui.lstate) {
-                            ui.into.raise();
+                            try {
+                                ui.into.raise();
+                            } catch (e) { }
                             ui.lstate = 1;
                             ui.from_ico?.remove_style_class_name("selected");
                             ui.into_ico?.add_style_class_name("selected");
                         }
                     }
                     else if (ui.lstate) {
-                        ui.from.raise();
+                        try {
+                            ui.from.raise();
+                        } catch (e) { }
                         ui.lstate = 0;
                         ui.from_ico?.add_style_class_name("selected");
                         ui.into_ico?.remove_style_class_name("selected");
@@ -2021,9 +2053,20 @@ class Manager {
                 }
                 else {
                     if ((progress > 0.8) || ui.lstate) {
-                        ui.into.activate(
-                            Meta.CURRENT_TIME
-                        );
+                        try {
+                            try {
+                                this._actionWidgets
+                                    .cacheWinTabList.first.activate(
+                                        Meta.CURRENT_TIME
+                                    );
+                            } catch (e) { }
+                            try {
+                                ui.from.raise();
+                            } catch (e) { }
+                            ui.into.activate(
+                                Meta.CURRENT_TIME
+                            );
+                        } catch (e) { }
                         if (prv) {
                             this._actionWidgets.cacheWinTabList.wins.unshift(
                                 this._actionWidgets.cacheWinTabList.wins.pop()
@@ -2043,36 +2086,40 @@ class Manager {
                     }
                     ui.nclose = 0;
                     // Ease Restore
-                    ui.from_actor.ease({
-                        duration: Math.round(200 * progress),
-                        mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-                        opacity: 255,
-                        scale_x: 1,
-                        scale_y: 1,
-                        onStopped: () => {
-                            ui.from_actor.set_pivot_point(0, 0);
-                            ui.from_actor = null;
-                            ui.from = null;
-                            if (++ui.nclose == 2) {
-                                ui = null;
+                    try {
+                        ui.from_actor.ease({
+                            duration: Math.round(200 * progress),
+                            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                            opacity: 255,
+                            scale_x: 1,
+                            scale_y: 1,
+                            onStopped: () => {
+                                ui.from_actor.set_pivot_point(0, 0);
+                                ui.from_actor = null;
+                                ui.from = null;
+                                if (++ui.nclose == 2) {
+                                    ui = null;
+                                }
                             }
-                        }
-                    });
-                    ui.into_actor.ease({
-                        duration: Math.round(200 * progress),
-                        mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-                        opacity: 255,
-                        scale_x: 1,
-                        scale_y: 1,
-                        onStopped: () => {
-                            ui.into_actor.set_pivot_point(0, 0);
-                            ui.into_actor = null;
-                            ui.into = null;
-                            if (++ui.nclose == 2) {
-                                ui = null;
+                        });
+                    } catch (e) { }
+                    try {
+                        ui.into_actor.ease({
+                            duration: Math.round(200 * progress),
+                            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                            opacity: 255,
+                            scale_x: 1,
+                            scale_y: 1,
+                            onStopped: () => {
+                                ui.into_actor.set_pivot_point(0, 0);
+                                ui.into_actor = null;
+                                ui.into = null;
+                                if (++ui.nclose == 2) {
+                                    ui = null;
+                                }
                             }
-                        }
-                    });
+                        });
+                    } catch (e) { }
                     this._actionWidgets[wid] = null;
 
                     // Clear cache after timeout
@@ -2084,7 +2131,7 @@ class Manager {
                             me._actionWidgets.cacheWinTabList = null;
                             clearTimeout(me._actionWidgets.resetWinlist);
                             me._actionWidgets.resetWinlist = 0;
-                        }, 1000
+                        }, 500
                     );
                 }
             } else if (state) {
