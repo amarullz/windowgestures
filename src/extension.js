@@ -122,6 +122,10 @@ class Manager {
             clearInterval(this._flingInterval);
             this._flingInterval = null;
         }
+        if (this._actionWidgets.tilerHider) {
+            clearTimeout(this._actionWidgets.tilerHider);
+            this._actionWidgets.tilerHider = null;
+        }
     }
 
     // Cleanup Extension
@@ -1091,7 +1095,8 @@ class Manager {
                             let holdMove = this._getTapHoldMove();
 
                             if (!allowMove || holdMove) {
-                                if (!this._targetWindow.get_maximized()) {
+                                if (!this._targetWindow.get_maximized() &&
+                                    !this._targetWindow.isTiled) {
                                     this._edgeGestured = 1;
                                 }
                                 else {
@@ -1206,7 +1211,7 @@ class Manager {
             if (this._isEdge(WindowEdgeAction.GESTURE_UP)) {
                 vert = 1;
                 // Reset to single gesture
-                if (Math.abs(this._movePos.x) < trigger) {
+                if (Math.abs(this._movePos.x) < combineTrigger) {
                     this._edgeAction = WindowEdgeAction.GESTURE_UP;
                     this._gesture.velocity = this._velocityInit();
                     this._velocityAppend(this._gesture.velocity, 0);
@@ -1216,9 +1221,8 @@ class Manager {
             }
             else if (this._isEdge(WindowEdgeAction.GESTURE_DOWN)) {
                 vert = 2;
-
                 // Reset to single gesture
-                if (Math.abs(this._movePos.x) < trigger) {
+                if (Math.abs(this._movePos.x) < combineTrigger) {
                     this._edgeAction = WindowEdgeAction.GESTURE_DOWN;
                     this._gesture.velocity = this._velocityInit();
                     this._velocityAppend(this._gesture.velocity, 0);
@@ -1344,7 +1348,8 @@ class Manager {
         if (this._gesture.action) {
             let aid = this._actionIdGet(this._gesture.action);
             if (aid) {
-                if (this._gesture.progress < 1.0) {
+                let issnapaction = (aid == 51 || aid == 52);
+                if ((this._gesture.progress < 1.0) && !issnapaction) {
                     // Fling Velocity
                     let vel = this._velocityCalc(this._gesture.velocity);
                     if (vel > 0.001) {
@@ -2507,6 +2512,9 @@ class Manager {
             let winCanMax = activeWin.allows_move() && activeWin.can_maximize();
             let winIsMaximized = activeWin.get_maximized();
             let winMaxed = Meta.MaximizeFlags.BOTH == winIsMaximized;
+            if (activeWin.isTiled) {
+                winIsMaximized = Meta.MaximizeFlags.VERTICAL;
+            }
             let winIsFullscreen = activeWin.is_fullscreen();
             let allowFullscreen = this._getEnableFullscreen();
             let ui = 0; // find action id
@@ -2560,51 +2568,53 @@ class Manager {
                         }
                     }
                     else if (ui <= 3) {
-                        if (progress >= 0.2) {
-                            if (!this._actionWidgets[wid]) {
-                                let moarea = activeWin
-                                    .get_work_area_current_monitor();
-                                if (ui == 1) {
-                                    // max
-                                    this._showPreview(
-                                        moarea.x,
-                                        moarea.y,
-                                        moarea.width,
-                                        moarea.height
-                                    );
-                                }
-                                else if (ui == 2) {
-                                    // snap left
-                                    this._showPreview(
-                                        moarea.x,
-                                        moarea.y,
-                                        moarea.width / 2,
-                                        moarea.height
-                                    );
-                                }
-                                else if (ui == 3) {
-                                    // snap right
-                                    this._showPreview(
-                                        moarea.x
-                                        + (moarea.width / 2),
-                                        moarea.y,
-                                        moarea.width / 2,
-                                        moarea.height
-                                    );
-                                }
-                                this._actionWidgets[wid] = 1;
+                        if (!this._actionWidgets[wid]) {
+                            if (this._actionWidgets.tilerHider) {
+                                clearTimeout(this._actionWidgets.tilerHider);
+                                this._actionWidgets.tilerHider = null;
                             }
-                        }
-                        else if (this._actionWidgets[wid]) {
-                            this._hidePreview();
-                            this._actionWidgets[wid] = 0;
+                            let moarea = activeWin
+                                .get_work_area_current_monitor();
+                            if (ui == 1) {
+                                // max
+                                this._showPreview(
+                                    moarea.x,
+                                    moarea.y,
+                                    moarea.width,
+                                    moarea.height
+                                );
+                            }
+                            else if (ui == 2) {
+                                // snap left
+                                this._showPreview(
+                                    moarea.x,
+                                    moarea.y,
+                                    moarea.width / 2,
+                                    moarea.height
+                                );
+                            }
+                            else if (ui == 3) {
+                                // snap right
+                                this._showPreview(
+                                    moarea.x
+                                    + (moarea.width / 2),
+                                    moarea.y,
+                                    moarea.width / 2,
+                                    moarea.height
+                                );
+                            }
+                            this._actionWidgets[wid] = 1;
                         }
                     }
                 }
                 else {
                     if (ui <= 3) {
                         // max, snap
-                        if (progress >= 0.2) {
+                        if (this._actionWidgets.tilerHider) {
+                            clearTimeout(this._actionWidgets.tilerHider);
+                            this._actionWidgets.tilerHider = null;
+                        }
+                        if (this._actionWidgets[wid] && (progress > 0)) {
                             if (ui == 1) {
                                 activeWin.maximize(Meta.MaximizeFlags.BOTH);
                             }
@@ -2615,7 +2625,11 @@ class Manager {
                                 this._setSnapWindow(1);
                             }
                         }
-                        this._hidePreview();
+                        this._actionWidgets.tilerHider = setTimeout(
+                            function (me) {
+                                me._hidePreview();
+                                me._actionWidgets.tilerHider = null;
+                            }, 100, this);
                         this._actionWidgets[wid] = 0;
                     }
                     else {
@@ -2644,6 +2658,11 @@ class Manager {
                                 activeWin.unmaximize(
                                     Meta.MaximizeFlags.BOTH
                                 );
+                                if (activeWin.isTiled) {
+                                    this._sendKeyPress([
+                                        Clutter.KEY_Super_L, Clutter.KEY_Down
+                                    ]);
+                                }
                             }
                         }
                     }
