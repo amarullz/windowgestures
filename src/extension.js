@@ -1549,8 +1549,8 @@ class Manager {
                     if (!activeWin) {
                         activeWin = global.display.get_focus_window();
                     }
-                    if (activeWin && activeWin.allows_move() &&
-                        !activeWin.get_maximized()) {
+                    if (activeWin && ((activeWin.allows_move() &&
+                        !activeWin.get_maximized()) || !isWin)) {
                         activeWin.activate(
                             Meta.CURRENT_TIME
                         );
