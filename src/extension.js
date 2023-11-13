@@ -471,7 +471,8 @@ class Manager {
 
     _isWindowBlacklist(win) {
         if (win) {
-            if (WindowClassBlacklist.indexOf(win.get_wm_class()) == -1) {
+            if (WindowClassBlacklist.indexOf(win.get_wm_class()) == -1 ||
+                win.get_window_type() === Meta.WindowType.DESKTOP) {
                 return false;
             }
         }
