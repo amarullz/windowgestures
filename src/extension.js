@@ -1023,7 +1023,7 @@ class Manager {
         if (this._swipeIsWin && !this._isEdge(WindowEdgeAction.RESIZE)) {
             let setmove = false;
             if (this._getTapHoldMove()) {
-                if (this._tapHold) {
+                if (this._tapHold == this._gestureNumFinger()) {
                     // Tap and hold
                     setmove = true;
                 }
@@ -1042,6 +1042,10 @@ class Manager {
                     this._edgeAction = WindowEdgeAction.MOVE;
                 }
             }
+        } else if (this._tapHold > 2 &&
+            this._tapHold != this._gestureNumFinger()) {
+            this._edgeAction = WindowEdgeAction.GESTURE_DOWN;
+            this._movePos.y = (this._gestureThreshold() / 4) + 1;
         }
 
         return this._swipeIsWin ?
@@ -1533,7 +1537,7 @@ class Manager {
 
     _tapHoldGesture(state, numfingers) {
         let isWin = (numfingers == this._gestureNumFinger());
-        if (isWin && this._getTapHoldMove()) {
+        if (!isWin || this._getTapHoldMove()) {
             if (state) {
                 let me = this;
                 this._holdTo = setTimeout(function () {
@@ -1574,7 +1578,7 @@ class Manager {
                             }
                         });
                     }
-                }, 200);
+                }, 100);
             }
             else {
                 if (this._holdTo) {
