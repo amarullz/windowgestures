@@ -1780,30 +1780,17 @@ class Manager {
                     }
 
                     ui.fx?.release();
-                    ui.ease({
-                        duration: Math.round(250 * progress),
-                        mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-                        opacity: activeWin ? 0 : 255,
-                        scale_x: activeWin ? 0 : 1,
-                        scale_y: activeWin ? 0 : 1,
-                        onStopped: () => {
-                            ui.set_pivot_point(0, 0);
-                            if (activeWin) {
-                                ui.hide();
-                                ui.opacity = 0;
-                                ui.ease({
-                                    duration: 800,
-                                    opacity: 0
-                                });
-                                activeWin.delete(
-                                    Meta.CURRENT_TIME
-                                );
-                                activeWin = null;
-                            }
-                            ui = null;
-                        }
-                    });
-
+                    ui.set_pivot_point(0, 0);
+                    ui.opacity = 255;
+                    ui.scale_x = 1.0;
+                    ui.scale_y = 1.0;
+                    if (activeWin) {
+                        activeWin.delete(
+                            Meta.CURRENT_TIME
+                        );
+                        activeWin = null;
+                    }
+                    ui = null;
                     this._actionWidgets.close = null;
                 }
             } else if (state) {

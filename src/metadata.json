@@ -5,7 +5,8 @@
   "url": "https://github.com/amarullz/windowgestures",
   "settings-schema": "org.gnome.shell.extensions.windowgestures",
   "shell-version": [
-    "45"
+    "45",
+    "46"
   ],
   "version": 6
 }
