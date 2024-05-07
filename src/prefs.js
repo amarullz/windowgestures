@@ -21,9 +21,12 @@ import Gtk from 'gi://Gtk';
 import Gio from 'gi://Gio';
 import Gdk from 'gi://Gdk';
 import { ExtensionPreferences } from 'resource:///org/gnome/Shell/Extensions/js/extensions/prefs.js';
+import { PACKAGE_VERSION } from 'resource:///org/gnome/Shell/Extensions/js/misc/config.js';
 
 export default class extends ExtensionPreferences {
     fillPreferencesWindow(window) {
+        const GNOME_VER = parseInt(PACKAGE_VERSION);
+        const SUPPORT_PINCH = (GNOME_VER < 46);
         const WEBSITE_LINK = "https://amarullz.com/";
         const PAYPAL_LINK = "https://paypal.me/amarullz";
         const GNU_SOFTWARE = '<span size="small">' +
@@ -45,20 +48,25 @@ export default class extends ExtensionPreferences {
             "Use active window",
             "If true, gesture will control active window rather than window on current pointer. This will disable resize function"
         );
-        this._createSwitch(
-            gestures, "taphold-move",
-            "Tap and hold to move/resize window",
-            "Trigger move window by tap and hold rather than by swipe down"
-        );
+
+        if (SUPPORT_PINCH) {
+            this._createSwitch(
+                gestures, "taphold-move",
+                "Tap and hold to move/resize window",
+                "Trigger move window by tap and hold rather than by swipe down"
+            );
+        }
 
 
         // Function Settings
         const fn = new Adw.PreferencesGroup({ title: "Active Functions" });
-        this._createSwitch(
-            fn, "pinch-enable",
-            "Enable pinch gestures",
-            ""
-        );
+        if (SUPPORT_PINCH) {
+            this._createSwitch(
+                fn, "pinch-enable",
+                "Enable pinch gestures",
+                ""
+            );
+        }
         this._createSwitch(
             fn, "fn-resize",
             "Enable resize window",
@@ -85,7 +93,7 @@ export default class extends ExtensionPreferences {
             ""
         );
 
-        // Pinch Settings
+        // Actions
         const action_list = [
             "Disable",
             "Minimize window",      // 1
@@ -142,15 +150,17 @@ export default class extends ExtensionPreferences {
         this._createCombo(act2, "swipe3-downup",
             "Swipe down > up", "", action_list);
 
-        const act3 = new Adw.PreferencesGroup({ title: "Pinch Actions" });
-        this._createCombo(act3, "pinch3-in",
-            "Pinch-in 3 fingers", "", action_list);
-        this._createCombo(act3, "pinch3-out",
-            "Pinch-out 3 fingers", "", action_list);
-        this._createCombo(act3, "pinch4-in",
-            "Pinch-in 4 fingers", "", action_list);
-        this._createCombo(act3, "pinch4-out",
-            "Pinch-out 4 fingers", "", action_list);
+        if (SUPPORT_PINCH) {
+            const act3 = new Adw.PreferencesGroup({ title: "Pinch Actions" });
+            this._createCombo(act3, "pinch3-in",
+                "Pinch-in 3 fingers", "", action_list);
+            this._createCombo(act3, "pinch3-out",
+                "Pinch-out 3 fingers", "", action_list);
+            this._createCombo(act3, "pinch4-in",
+                "Pinch-in 4 fingers", "", action_list);
+            this._createCombo(act3, "pinch4-out",
+                "Pinch-out 4 fingers", "", action_list);
+        }
 
 
         // Function Settings
@@ -187,14 +197,16 @@ export default class extends ExtensionPreferences {
             "Gesture acceleration",
             "",
             10, 25, 1);
-        this._createSpin(tweaks, "pinch-in-scale",
-            "Pinch in scale target",
-            "",
-            30, 80, 5);
-        this._createSpin(tweaks, "pinch-out-scale",
-            "Pinch out scale target",
-            "",
-            120, 200, 5);
+        if (SUPPORT_PINCH) {
+            this._createSpin(tweaks, "pinch-in-scale",
+                "Pinch in scale target",
+                "",
+                30, 80, 5);
+            this._createSpin(tweaks, "pinch-out-scale",
+                "Pinch out scale target",
+                "",
+                120, 200, 5);
+        }
 
 
         // About
@@ -207,6 +219,16 @@ export default class extends ExtensionPreferences {
             css_classes: ['dim-label'],
         }));
         about.add(aboutVersion);
+
+        const gnomeVersion = new Adw.ActionRow({
+            title: 'Gnome Version',
+        });
+        gnomeVersion.add_suffix(new Gtk.Label({
+            label: PACKAGE_VERSION,
+            css_classes: ['dim-label'],
+        }));
+        about.add(gnomeVersion);
+
         const githubRow = this._createLinkRow(window, 'Source Github', this.metadata.url);
         about.add(githubRow);
         const websiteRow = this._createLinkRow(window, 'Visit Website', WEBSITE_LINK);
@@ -233,7 +255,9 @@ export default class extends ExtensionPreferences {
         page.add(gestures);
         page.add(act1);
         page.add(act2);
-        page.add(act3);
+        if (SUPPORT_PINCH) {
+            page.add(act3);
+        }
         page.add(fn);
         page.add(ui);
         page.add(tweaks);
