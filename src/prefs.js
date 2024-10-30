@@ -150,8 +150,9 @@ export default class extends ExtensionPreferences {
         this._createCombo(act2, "swipe3-downup",
             "Swipe down > up", "", action_list);
 
+        var act3 = null;
         if (SUPPORT_PINCH) {
-            const act3 = new Adw.PreferencesGroup({ title: "Pinch Actions" });
+            act3 = new Adw.PreferencesGroup({ title: "Pinch Actions" });
             this._createCombo(act3, "pinch3-in",
                 "Pinch-in 3 fingers", "", action_list);
             this._createCombo(act3, "pinch3-out",
@@ -255,7 +256,7 @@ export default class extends ExtensionPreferences {
         page.add(gestures);
         page.add(act1);
         page.add(act2);
-        if (SUPPORT_PINCH) {
+        if (SUPPORT_PINCH && act3) {
             page.add(act3);
         }
         page.add(fn);
