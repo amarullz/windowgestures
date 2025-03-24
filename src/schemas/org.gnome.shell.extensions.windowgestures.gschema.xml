@@ -12,7 +12,7 @@
             <summary>Handle Active Window</summary>
         </key>
         <key name="taphold-move" type="b">
-            <default>true</default>
+            <default>false</default>
             <summary>Tap and hold to move</summary>
         </key>
 

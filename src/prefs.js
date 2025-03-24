@@ -49,13 +49,11 @@ export default class extends ExtensionPreferences {
             "If true, gesture will control active window rather than window on current pointer. This will disable resize function"
         );
 
-        if (SUPPORT_PINCH) {
-            this._createSwitch(
-                gestures, "taphold-move",
-                "Tap and hold to move/resize window",
-                "Trigger move window by tap and hold rather than by swipe down"
-            );
-        }
+        this._createSwitch(
+            gestures, "taphold-move",
+            "Tap and hold to move/resize window",
+            "Trigger move window by tap and hold rather than by swipe down"
+        );
 
 
         // Function Settings
