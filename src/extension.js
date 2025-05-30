@@ -1927,8 +1927,13 @@ class Manager {
                         let posCfg = this._settings.get_int(
                             'winswitch-position'
                         );
-                        let lW = (pad * 2) + (wins.length * 48);
-                        let lH = (pad * 2) + 32;
+                        let scale = 1.0;
+                        let monitor = global.display.get_primary_monitor();
+                        if (monitor >= 0) {
+                            scale = global.display.get_monitor_scale(monitor);
+                        }
+                        let lW = ((pad * 2) + (wins.length * 48)) * scale;
+                        let lH = ((pad * 2) + 32) * scale;
                         let lX = (gsize[0] - lW) / 2;
                         let lY = 64; // Top
                         let pivY = 0;
@@ -1939,7 +1944,7 @@ class Manager {
                         }
                         else if (posCfg == 2) {
                             // Bottom
-                            lY = gsize[1] - (lH + 64);
+                            lY = gsize[1] - (lH + 64 * scale);
                             pivY = 1;
                         }
                         listActor = this._createUi(
@@ -1947,18 +1952,18 @@ class Manager {
                         );
                         listActor.set_pivot_point(0.5, pivY);
                         listActor.opacity = 0;
-                        listActor.scale_x = 0.5;
-                        listActor.scale_y = 0.5;
+                        listActor.scale_x = listActor.scale_y = 0.5;
                         listActor._data = [];
+                        let iconSize = 32 * scale;
                         for (var i = 0; i < wins.length; i++) {
                             let win = wins[i];
                             let app = this._winmanWinApp(win);
-                            let ico = app.create_icon_texture(32);
+                            let ico = app.create_icon_texture(iconSize);
                             ico.add_style_class_name("wgs-winswitch-ico");
                             // remove_style_class_name
                             listActor.add_child(ico);
-                            ico.set_size(32, 32);
-                            ico.set_position((pad * 2) + (48 * i), pad);
+                            ico.set_size(iconSize, iconSize);
+                            ico.set_position(((pad * 2) + (48 * i)) * scale, pad * scale);
                             ico.set_pivot_point(0.5, 0.5);
                             listActor._data.push(
                                 {
@@ -1970,8 +1975,8 @@ class Manager {
                         }
                         listActor.viewShow({
                             opacity: 255,
-                            scale_x: 1,
-                            scale_y: 1
+                            scale_x: 1.0,
+                            scale_y: 1.0
                         }, 200);
 
                         // Reorder for next (below 1s) calls
@@ -2282,23 +2287,32 @@ class Manager {
                     let uipar = activeWin.get_compositor_private();
                     if (uipar) {
                         let wrect = activeWin.get_frame_rect();
-                        let uix = ((uipar.get_width() - wrect.width) / 2);
-                        let uiy = (uipar.get_height() / 2) - 32;
+                        let scale = 1.0;
+                        let winMonitor = activeWin.get_monitor();
+                        if (winMonitor >= 0) {
+                            scale = global.display.get_monitor_scale(winMonitor);
+                        }
+                        let uix = ((uipar.get_width() - wrect.width) / scale / 2);
+                        let uiy = (uipar.get_height() / scale / 2) - 32 * scale;
+                        let uisize = 64 * scale;
                         if (kid) {
-                            uix += wrect.width - 128;
+                            uix += wrect.width / scale - uisize - 64 / scale;
                         }
                         else {
-                            uix += 64;
+                            uix += 64 / scale;
                         }
                         ui = this._createUi(
                             'wgs-indicator-backforward',
                             uix,
                             uiy,
-                            64, 64,
+                            uisize, uisize,
                             kid ? 'pan-end-symbolic.symbolic' :
                                 'pan-start-symbolic.symbolic',
                             uipar
                         );
+                        let invScale = 1.0 / scale;
+                        ui.scale_x = invScale;
+                        ui.scale_y = invScale;
                         if (ui) {
                             ui.translation_x = kid ? -32 : 32;
                             ui.opacity = 0;
@@ -2389,6 +2403,9 @@ class Manager {
                 }
             }
             else {
+                let display = global.get_display();
+                let monitor = display.get_primary_monitor();
+                let scale = display.get_monitor_scale(display);
                 if (!ui) {
                     const iconlist = [
                         'audio-volume-muted-symbolic',
@@ -2396,15 +2413,13 @@ class Manager {
                         'media-skip-forward-symbolic',
                         'media-skip-backward-symbolic'
                     ];
-                    let display = global.get_display();
-                    let mrect = display.get_monitor_geometry(
-                        display.get_primary_monitor()
-                    );
+                    let mrect = display.get_monitor_geometry(monitor);
+                    let uisize = 128 * scale;
                     ui = this._createUi(
                         'wgs-indicator-keys',
-                        mrect.x + (mrect.width / 2) - 64,
-                        mrect.y + (mrect.height / 2) - 64,
-                        128, 128,
+                        mrect.x + (mrect.width / 2) - (uisize / 2),
+                        mrect.y + (mrect.height / 2) - (uisize / 2),
+                        uisize, uisize,
                         iconlist[id - 14],
                         null
                     );
@@ -2416,7 +2431,7 @@ class Manager {
                 // Execute Progress
                 if (ui && ui != -1) {
                     if (!state) {
-                        ui.scale_x = ui.scale_y = progress;
+                        ui.scale_x = ui.scale_y = progress / scale;
                         ui.opacity = Math.round(255 * progress);
                     }
                     else {
