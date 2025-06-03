@@ -25,8 +25,8 @@ import { PACKAGE_VERSION } from 'resource:///org/gnome/Shell/Extensions/js/misc/
 
 export default class extends ExtensionPreferences {
     fillPreferencesWindow(window) {
-        const GNOME_VER = parseInt(PACKAGE_VERSION);
-        const SUPPORT_PINCH = (GNOME_VER < 46);
+        const GNOME_VER = parseFloat(PACKAGE_VERSION);
+        const SUPPORT_PINCH = (GNOME_VER < 46)||(GNOME_VER>=48.2);
         const WEBSITE_LINK = "https://amarullz.com/";
         const PAYPAL_LINK = "https://paypal.me/amarullz";
         const GNU_SOFTWARE = '<span size="small">' +
