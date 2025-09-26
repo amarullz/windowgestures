@@ -26,7 +26,7 @@ import { PACKAGE_VERSION } from 'resource:///org/gnome/Shell/Extensions/js/misc/
 export default class extends ExtensionPreferences {
     fillPreferencesWindow(window) {
         const GNOME_VER = parseFloat(PACKAGE_VERSION);
-        const SUPPORT_PINCH = (GNOME_VER < 46)||(GNOME_VER>=48.2);
+        const SUPPORT_PINCH = (GNOME_VER < 46) || (GNOME_VER >= 48.2);
         const WEBSITE_LINK = "https://amarullz.com/";
         const PAYPAL_LINK = "https://paypal.me/amarullz";
         const GNU_SOFTWARE = '<span size="small">' +
@@ -90,6 +90,16 @@ export default class extends ExtensionPreferences {
             "Enable move window snap",
             ""
         );
+        this._createSwitch(
+            fn, "fixed-window-order",
+            "Use fixed window order for switching",
+            "When enabled, window switching will follow a fixed order based on window creation time instead of cycling between two windows"
+        );
+        this._createSwitch(
+            fn, "stable-window-switching",
+            "Use stable window switching",
+            "When enabled, window switching will be more stable and always switch exactly one window regardless of gesture distance"
+        );
 
         // Actions
         const action_list = [
@@ -121,6 +131,9 @@ export default class extends ExtensionPreferences {
             "Quick settings",       // 21
             "Notification",         // 22
             "Run (Alt+F2)",         // 23
+
+            "Next application",     // 24
+            "Previous application", // 25
 
         ];
 

@@ -40,6 +40,14 @@
             <default>true</default>
             <summary>Enable Pinch</summary>
         </key>
+        <key name="fixed-window-order" type="b">
+            <default>false</default>
+            <summary>Use fixed window order for switching</summary>
+        </key>
+        <key name="stable-window-switching" type="b">
+            <default>false</default>
+            <summary>Use stable window switching</summary>
+        </key>
 
 
         <key type="i" name="ui-theme">

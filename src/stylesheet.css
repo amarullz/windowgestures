@@ -36,6 +36,24 @@
     background-color: rgba(120, 120, 120, 0.6);
 }
 
+/* Application Switching Indicator */
+.wgs-appswitch {
+    text-align: center;
+    border-radius: 48px;
+}
+
+.wgs-appswitch .wgs-appswitch-ico {
+    padding: 5px;
+    border-radius: 5px;
+    background-color: rgba(120, 120, 120, 0);
+    transition-property: background-color;
+    transition-duration: 0.3s;
+}
+
+.wgs-appswitch .wgs-appswitch-ico.selected {
+    background-color: rgba(120, 120, 120, 0.6);
+}
+
 /* Key Indicator */
 .wgs-indicator-keys {
     width: 128px;
@@ -69,6 +87,7 @@
 
 /* Light Mode */
 .wgs-winswitch,
+.wgs-appswitch,
 .wgs-indicator-keys,
 .wgs-indicator-backforward {
     background-color: rgba(230, 230, 230, 0.8);
@@ -84,6 +103,7 @@
 
 /* Dark Mode */
 .wgs-dark.wgs-winswitch,
+.wgs-dark.wgs-appswitch,
 .wgs-dark.wgs-indicator-keys,
 .wgs-dark.wgs-indicator-backforward {
     background-color: rgba(40, 40, 40, 0.8);
