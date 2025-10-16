@@ -178,7 +178,7 @@ export default class extends ExtensionPreferences {
         const tweaks = new Adw.PreferencesGroup({ title: "Tweaks" });
         this._createSpin(tweaks, "edge-size",
             "Resize edge size",
-            "Number of pixel from window egdes to determine resize action",
+            "Number of pixel from window edges to determine resize action",
             16, 96, 4);
         this._createSpin(tweaks, "top-edge-size",
             "Title edge size",
