@@ -18,12 +18,16 @@
 
 import Clutter from 'gi://Clutter';
 import Meta from 'gi://Meta';
+import Mtk from 'gi://Mtk';
 import St from 'gi://St';
 import Shell from 'gi://Shell';
 import Gio from 'gi://Gio';
 
 import * as Main from 'resource:///org/gnome/shell/ui/main.js';
 import { Extension } from 'resource:///org/gnome/shell/extensions/extension.js';
+import { PACKAGE_VERSION } from 'resource:///org/gnome/shell/misc/config.js';
+
+const GNOME_49 = parseFloat(PACKAGE_VERSION) >= 49;
 
 // Window edge action
 const WindowEdgeAction = {
@@ -208,14 +212,20 @@ class Manager {
          * https://github.com/icedman/swap-finger-gestures-3-4
          * 
          */
-        this._swipeMods = [
-            Main.overview._swipeTracker._touchpadGesture,
-            Main.wm._workspaceAnimation._swipeTracker._touchpadGesture,
-            Main.overview._overview._controls
-                ._workspacesDisplay._swipeTracker._touchpadGesture,
-            Main.overview._overview._controls
-                ._appDisplay._swipeTracker._touchpadGesture
-        ];
+        try {
+            this._swipeMods = [
+                Main.overview._swipeTracker._touchpadGesture,
+                Main.wm._workspaceAnimation._swipeTracker._touchpadGesture,
+                Main.overview._overview._controls
+                    ._workspacesDisplay._swipeTracker._touchpadGesture,
+                Main.overview._overview._controls
+                    ._appDisplay._swipeTracker._touchpadGesture
+            ];
+        } catch (e) {
+            console.warn(`WindowGestures: finger swap unavailable: ${e.message}`);
+            this._swipeMods = [];
+            return;
+        }
         let me = this;
         this._swipeMods.forEach((g) => {
             g._newHandleEvent = (actor, event) => {
@@ -543,7 +553,7 @@ class Manager {
 
     // Is On Overview
     _isOnOverview() {
-        return Main.overview._shown;
+        return Main.overview.visible;
     }
 
     // Check edge flags
@@ -557,7 +567,7 @@ class Manager {
             return;
         }
         global.window_manager.emit("show-tile-preview",
-            global.display.get_focus_window(), new Meta.Rectangle(
+            global.display.get_focus_window(), new Mtk.Rectangle(
                 { x: rx, y: ry, width: rw, height: rh }
             )
             , this._monitorId
@@ -1038,7 +1048,7 @@ class Manager {
             }
             if (setmove) {
                 if (this._targetWindow.allows_move() &&
-                    !this._targetWindow.get_maximized()) {
+                    !this._targetWindow.is_maximized()) {
                     this._edgeAction = WindowEdgeAction.MOVE;
                 }
             }
@@ -1100,7 +1110,7 @@ class Manager {
                             let holdMove = this._getTapHoldMove();
 
                             if (!allowMove || holdMove) {
-                                if (!this._targetWindow.get_maximized() &&
+                                if (!this._targetWindow.is_maximized() &&
                                     !this._targetWindow.isTiled) {
                                     this._edgeGestured = 1;
                                 }
@@ -1111,7 +1121,7 @@ class Manager {
                             else if (
                                 !this._edgeGestured &&
                                 !this._targetWindow.is_fullscreen() &&
-                                !this._targetWindow.get_maximized() &&
+                                !this._targetWindow.is_maximized() &&
                                 this._targetWindow.allows_move()) {
                                 this._edgeAction = WindowEdgeAction.MOVE;
                                 return this._swipeUpdateMove();
@@ -1330,7 +1340,10 @@ class Manager {
             if (this._isEdge(WindowEdgeAction.MOVE_SNAP_TOP)) {
                 if (this._targetWindow.can_maximize()) {
                     this._resetWinPos();
-                    this._targetWindow.maximize(Meta.MaximizeFlags.BOTH);
+                    if (GNOME_49)
+                        this._targetWindow.maximize();
+                    else
+                        this._targetWindow.maximize(Meta.MaximizeFlags.BOTH);
                 }
             }
             else if (this._isEdge(WindowEdgeAction.MOVE_SNAP_LEFT)) {
@@ -1550,7 +1563,7 @@ class Manager {
                         activeWin = global.display.get_focus_window();
                     }
                     if (activeWin && ((activeWin.allows_move() &&
-                        !activeWin.get_maximized()) || !isWin)) {
+                        !activeWin.is_maximized()) || !isWin)) {
                         activeWin.activate(
                             Meta.CURRENT_TIME
                         );
@@ -2468,7 +2481,7 @@ class Manager {
                 return;
             }
             // Quick Settings (Super+S)
-            Main.wm._toggleQuickSettings();
+            try { Main.wm._toggleQuickSettings(); } catch (e) {}
             // this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_S + _LCASE]);
         }
         else if (id == 22) {
@@ -2477,7 +2490,7 @@ class Manager {
                 return;
             }
             // Notification (Super+V)
-            Main.wm._toggleCalendar();
+            try { Main.wm._toggleCalendar(); } catch (e) {}
             // this._sendKeyPress([Clutter.KEY_Super_L, Clutter.KEY_V + _LCASE]);
         }
         else if (id == 23) {
@@ -2502,10 +2515,15 @@ class Manager {
             }
 
             let winCanMax = activeWin.allows_move() && activeWin.can_maximize();
-            let winIsMaximized = activeWin.get_maximized();
-            let winMaxed = Meta.MaximizeFlags.BOTH == winIsMaximized;
-            if (activeWin.isTiled) {
-                winIsMaximized = Meta.MaximizeFlags.VERTICAL;
+            let winMaxed, winIsMaximized;
+            if (GNOME_49) {
+                winMaxed = activeWin.is_maximized();
+                winIsMaximized = winMaxed || activeWin.isTiled;
+            } else {
+                winIsMaximized = activeWin.get_maximized();
+                winMaxed = Meta.MaximizeFlags.BOTH == winIsMaximized;
+                if (activeWin.isTiled)
+                    winIsMaximized = Meta.MaximizeFlags.VERTICAL;
             }
             let winIsFullscreen = activeWin.is_fullscreen();
             let allowFullscreen = this._getEnableFullscreen();
@@ -2608,7 +2626,10 @@ class Manager {
                         }
                         if (this._actionWidgets[wid] && (progress > 0)) {
                             if (ui == 1) {
-                                activeWin.maximize(Meta.MaximizeFlags.BOTH);
+                                if (GNOME_49)
+                                    activeWin.maximize();
+                                else
+                                    activeWin.maximize(Meta.MaximizeFlags.BOTH);
                             }
                             else if (ui == 2) {
                                 this._setSnapWindow(0);
@@ -2647,9 +2668,12 @@ class Manager {
                             }
                             else if (ui == 6) {
                                 // restore
-                                activeWin.unmaximize(
-                                    Meta.MaximizeFlags.BOTH
-                                );
+                                if (GNOME_49)
+                                    activeWin.unmaximize();
+                                else
+                                    activeWin.unmaximize(
+                                        Meta.MaximizeFlags.BOTH
+                                    );
                                 if (activeWin.isTiled) {
                                     this._sendKeyPress([
                                         Clutter.KEY_Super_L, Clutter.KEY_Down
