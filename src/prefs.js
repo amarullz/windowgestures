@@ -121,6 +121,7 @@ export default class extends ExtensionPreferences {
             "Quick settings",       // 21
             "Notification",         // 22
             "Run (Alt+F2)",         // 23
+            "Maximize Window",      // 24
 
         ];
 
@@ -131,22 +132,22 @@ export default class extends ExtensionPreferences {
             "Swipe left", "", action_list);
         this._createCombo(act1, "swipe4-right",
             "Swipe right", "", action_list);
+        this._createCombo(act1, "swipe4-up",
+            "Swipe up", "", action_list);
         this._createCombo(act1, "swipe4-updown",
-            "Swipe down",
-            "Swipe up > down if Tap and hold to move/resize window disabled",
-            action_list);
+            "Swipe down", "", action_list);
 
         const act2 = new Adw.PreferencesGroup({
             title: (isSwap ? "4" : "3") + " Fingers Actions"
         });
         this._createCombo(act2, "swipe3-down",
             "Swipe down", "", action_list);
+        this._createCombo(act2, "swipe3-up",
+            "Swipe up", "", action_list);
         this._createCombo(act2, "swipe3-left",
-            "Swipe down > left", "", action_list);
+            "Swipe left", "", action_list);
         this._createCombo(act2, "swipe3-right",
-            "Swipe down > right", "", action_list);
-        this._createCombo(act2, "swipe3-downup",
-            "Swipe down > up", "", action_list);
+            "Swipe right", "", action_list);
 
         var act3 = null;
         if (SUPPORT_PINCH) {

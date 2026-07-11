@@ -1289,7 +1289,7 @@ class Manager {
                     // vert
                     this._gesture.action = (vert == 2) ?
                         ((this._edgeGestured == 1) ? 53 : 3) :
-                        50; // up=50, dn=53, up+dn=3
+                        12; // up=12, dn=53, up+dn=3
                 }
             }
         }
@@ -1315,6 +1315,43 @@ class Manager {
                 if (aid >= 50) {
                     this._activateWindow();
                 }
+
+                if (oprog >= 1.0 && (aid >= 4 && aid <= 7)) {
+                    let cache = this._actionWidgets && this._actionWidgets.cacheWinTabList;
+                    let isPrv = (aid == 5 || aid == 7);
+                    let hitBoundary = false;
+                    if (cache && cache.wins) {
+                        if (isPrv && cache.sel <= 0) hitBoundary = true;
+                        if (!isPrv && cache.sel >= cache.wins.length - 1) hitBoundary = true;
+                    }
+
+                    if (!hitBoundary) {
+                        // Continuous infinite scroll wrap
+                        this._runAction(aid, 2, 1.0);
+                        
+                        if (this._movePos.x < 0) {
+                            this._movePos.x += target;
+                        } else if (this._movePos.x > 0) {
+                            this._movePos.x -= target;
+                        }
+                        
+                        if (this._movePos.y < 0) {
+                            this._movePos.y += target;
+                        } else if (this._movePos.y > 0) {
+                            this._movePos.y -= target;
+                        }
+
+                        let newProg = oprog - 1.0;
+                        if (newProg < 0) newProg = 0;
+                        if (newProg >= 1.0) newProg = 0.99;
+                        
+                        this._gesture.progress = newProg;
+                        this._runAction(aid, 0, newProg, 0);
+                        this._gesture.action_cmp = this._gesture.action;
+                        return Clutter.EVENT_STOP;
+                    }
+                }
+
                 this._runAction(aid, 0, this._gesture.progress, oprog);
             }
             this._gesture.action_cmp = this._gesture.action;
@@ -1630,7 +1667,8 @@ class Manager {
             case 4: cfg_name = "swipe3-down"; break;
             case 5: cfg_name = "swipe3-left"; break;
             case 6: cfg_name = "swipe3-right"; break;
-            case 7: cfg_name = "swipe3-downup"; break;
+            case 7: cfg_name = "swipe3-up"; break;
+            case 12: cfg_name = "swipe4-up"; break;
             case 8: cfg_name = "pinch3-in"; break;
             case 9: cfg_name = "pinch3-out"; break;
             case 10: cfg_name = "pinch4-in"; break;
@@ -1647,6 +1685,7 @@ class Manager {
 
     // Run Action
     _runAction(id, state, progress, oprog) {
+        if (id == 24) id = 50;
         const _LCASE = 32;
         if (id == 1) {
             //
@@ -1927,8 +1966,8 @@ class Manager {
                         let posCfg = this._settings.get_int(
                             'winswitch-position'
                         );
-                        let lW = (pad * 2) + (wins.length * 48);
-                        let lH = (pad * 2) + 32;
+                        let lW = (pad * 2) + (wins.length * 144);
+                        let lH = (pad * 2) + 128;
                         let lX = (gsize[0] - lW) / 2;
                         let lY = 64; // Top
                         let pivY = 0;
@@ -1953,12 +1992,12 @@ class Manager {
                         for (var i = 0; i < wins.length; i++) {
                             let win = wins[i];
                             let app = this._winmanWinApp(win);
-                            let ico = app.create_icon_texture(32);
+                            let ico = app.create_icon_texture(128);
                             ico.add_style_class_name("wgs-winswitch-ico");
                             // remove_style_class_name
                             listActor.add_child(ico);
-                            ico.set_size(32, 32);
-                            ico.set_position((pad * 2) + (48 * i), pad);
+                            ico.set_size(128, 128);
+                            ico.set_position((pad * 2) + (144 * i), pad);
                             ico.set_pivot_point(0.5, 0.5);
                             listActor._data.push(
                                 {
@@ -1987,18 +2026,24 @@ class Manager {
                     }
                 }
                 if (wins.length > 1) {
-                    ui = { from: wins[0] };
+                    let cache = this._actionWidgets.cacheWinTabList;
+                    ui = { from: cache.wins[cache.sel] };
+                    let nextSel = cache.sel;
                     if (prv) {
-                        ui.into = wins[wins.length - 1];
+                        nextSel--;
+                        if (nextSel < 0) nextSel = 0;
                         ui.nsel = -1;
                     }
                     else {
-                        ui.into = wins[1];
+                        nextSel++;
+                        if (nextSel >= cache.wins.length) nextSel = cache.wins.length - 1;
                         ui.nsel = 1;
                     }
+                    ui.into = cache.wins[nextSel];
                     ui.lstate = 0;
                     ui.from_actor = ui.from.get_compositor_private();
                     ui.into_actor = ui.into.get_compositor_private();
+                    ui.isBoundary = (ui.from === ui.into);
                     ui.from_actor.set_pivot_point(0.5, 1);
                     ui.into_actor.set_pivot_point(0.5, 1);
 
@@ -2022,101 +2067,131 @@ class Manager {
             }
             if (ui && ui != -1) {
                 if (!state) {
-                    try {
-                        ui.from_actor.opacity = 255 - Math.round(80 * progress);
-                        ui.from_actor.scale_y =
-                            ui.from_actor.scale_x = 1.0 - (0.05 * progress);
-                        ui.into_actor.scale_y =
-                            ui.into_actor.scale_x = 1.0 + (0.05 * progress);
-                    } catch (e) { }
-                    if (progress > 0.8) {
-                        if (!ui.lstate) {
-                            try {
-                                ui.into.raise();
-                            } catch (e) { }
-                            ui.lstate = 1;
-                            ui.from_ico?.remove_style_class_name("selected");
-                            ui.into_ico?.add_style_class_name("selected");
-                        }
-                    }
-                    else if (ui.lstate) {
+                    if (!ui.isBoundary) {
                         try {
-                            ui.from.raise();
+                            ui.from_actor.opacity = 255 - Math.round(80 * progress);
+                            ui.from_actor.scale_y =
+                                ui.from_actor.scale_x = 1.0 - (0.05 * progress);
+                            ui.into_actor.scale_y =
+                                ui.into_actor.scale_x = 1.0 + (0.05 * progress);
                         } catch (e) { }
-                        ui.lstate = 0;
-                        ui.from_ico?.add_style_class_name("selected");
-                        ui.into_ico?.remove_style_class_name("selected");
+                        if (progress > 0.8) {
+                            if (!ui.lstate) {
+                                try {
+                                    ui.into.raise();
+                                } catch (e) { }
+                                ui.lstate = 1;
+                                ui.from_ico?.remove_style_class_name("selected");
+                                ui.into_ico?.add_style_class_name("selected");
+                            }
+                        }
+                        else if (ui.lstate) {
+                            try {
+                                ui.from.raise();
+                            } catch (e) { }
+                            ui.lstate = 0;
+                            ui.from_ico?.add_style_class_name("selected");
+                            ui.into_ico?.remove_style_class_name("selected");
+                        }
                     }
                 }
                 else {
                     if ((progress > 0.8) || ui.lstate) {
-                        try {
+                        if (state != 2) {
                             try {
-                                this._actionWidgets
-                                    .cacheWinTabList.first.activate(
-                                        Meta.CURRENT_TIME
-                                    );
+                                try {
+                                    this._actionWidgets
+                                        .cacheWinTabList.first.activate(
+                                            Meta.CURRENT_TIME
+                                        );
+                                } catch (e) { }
+                                try {
+                                    ui.from.raise();
+                                } catch (e) { }
+                                ui.into.activate(
+                                    Meta.CURRENT_TIME
+                                );
                             } catch (e) { }
-                            try {
-                                ui.from.raise();
-                            } catch (e) { }
-                            ui.into.activate(
-                                Meta.CURRENT_TIME
-                            );
-                        } catch (e) { }
+                        }
+                        let cache = this._actionWidgets.cacheWinTabList;
                         if (prv) {
-                            this._actionWidgets.cacheWinTabList.wins.unshift(
-                                this._actionWidgets.cacheWinTabList.wins.pop()
-                            );
+                            cache.sel--;
+                            if (cache.sel < 0) cache.sel = 0;
                         }
                         else {
-                            this._actionWidgets.cacheWinTabList.wins.push(
-                                this._actionWidgets.cacheWinTabList.wins.shift()
-                            );
+                            cache.sel++;
+                            if (cache.sel >= cache.wins.length) cache.sel = cache.wins.length - 1;
                         }
-                        ui.from_ico?.remove_style_class_name("selected");
-                        ui.into_ico?.add_style_class_name("selected");
+                        
+                        // Clear the UI cache so the next swipe recalculates from/into targets
+                        this._actionWidgets.switchwin_next = null;
+                        this._actionWidgets.switchwin_prev = null;
+
+                        if (!ui.isBoundary) {
+                            ui.from_ico?.remove_style_class_name("selected");
+                            ui.into_ico?.add_style_class_name("selected");
+                        }
                     }
                     else {
-                        ui.from_ico?.add_style_class_name("selected");
-                        ui.into_ico?.remove_style_class_name("selected");
+                        if (!ui.isBoundary) {
+                            ui.from_ico?.add_style_class_name("selected");
+                            ui.into_ico?.remove_style_class_name("selected");
+                        }
+                        if (state == 1) {
+                            try {
+                                ui.from.activate(Meta.CURRENT_TIME);
+                            } catch (e) { }
+                        }
                     }
                     ui.nclose = 0;
                     // Ease Restore
-                    try {
-                        ui.from_actor.ease({
-                            duration: Math.round(200 * progress),
-                            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-                            opacity: 255,
-                            scale_x: 1,
-                            scale_y: 1,
-                            onStopped: () => {
-                                ui.from_actor.set_pivot_point(0, 0);
-                                ui.from_actor = null;
-                                ui.from = null;
-                                if (++ui.nclose == 2) {
-                                    ui = null;
+                    if (ui.isBoundary) {
+                        try {
+                            ui.from_actor.set_pivot_point(0, 0);
+                        } catch(e) {}
+                        ui.from_actor = null;
+                        ui.from = null;
+                        ui = null;
+                    } else {
+                        try {
+                            ui.from_actor.ease({
+                                duration: Math.round(200 * progress),
+                                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                                opacity: 255,
+                                scale_x: 1,
+                                scale_y: 1,
+                                onStopped: () => {
+                                    if (ui) {
+                                        ui.from_actor.set_pivot_point(0, 0);
+                                        ui.from_actor = null;
+                                        ui.from = null;
+                                        if (++ui.nclose == 2) {
+                                            ui = null;
+                                        }
+                                    }
                                 }
-                            }
-                        });
-                    } catch (e) { }
-                    try {
-                        ui.into_actor.ease({
-                            duration: Math.round(200 * progress),
-                            mode: Clutter.AnimationMode.EASE_OUT_QUAD,
-                            opacity: 255,
-                            scale_x: 1,
-                            scale_y: 1,
-                            onStopped: () => {
-                                ui.into_actor.set_pivot_point(0, 0);
-                                ui.into_actor = null;
-                                ui.into = null;
-                                if (++ui.nclose == 2) {
-                                    ui = null;
+                            });
+                        } catch (e) { }
+                        try {
+                            ui.into_actor.ease({
+                                duration: Math.round(200 * progress),
+                                mode: Clutter.AnimationMode.EASE_OUT_QUAD,
+                                opacity: 255,
+                                scale_x: 1,
+                                scale_y: 1,
+                                onStopped: () => {
+                                    if (ui) {
+                                        ui.into_actor.set_pivot_point(0, 0);
+                                        ui.into_actor = null;
+                                        ui.into = null;
+                                        if (++ui.nclose == 2) {
+                                            ui = null;
+                                        }
+                                    }
                                 }
-                            }
-                        });
-                    } catch (e) { }
+                            });
+                        } catch (e) { }
+                    }
                     this._actionWidgets[wid] = null;
 
                     // Clear cache after timeout
