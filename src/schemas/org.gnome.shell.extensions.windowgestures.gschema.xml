@@ -28,6 +28,10 @@
             <default>true</default>
             <summary>Enable Maximized Snap</summary>
         </key>
+        <key name="swipe3-up" type="i">
+            <default>19</default>
+            <summary>3-Fingers Swipe Up Action</summary>
+        </key>
         <key name="fn-move-snap" type="b">
             <default>true</default>
             <summary>Enable Move Snap</summary>
@@ -63,6 +67,11 @@
             <summary>Swipe 4 Fingers Right</summary>
             <range min="0" max="30"/>
         </key>
+        <key type="i" name="swipe4-up">
+            <default>24</default>
+            <summary>Swipe 4 Fingers Up</summary>
+            <range min="0" max="30"/>
+        </key>
         <key type="i" name="swipe3-down">
             <default>3</default>
             <summary>Swipe 3 Fingers Down</summary>
@@ -81,11 +90,6 @@
         <key type="i" name="swipe4-updown">
             <default>0</default>
             <summary>Swipe 4 Fingers Up+Down</summary>
-            <range min="0" max="30"/>
-        </key>
-        <key type="i" name="swipe3-downup">
-            <default>0</default>
-            <summary>Swipe 3 Fingers Down+Up</summary>
             <range min="0" max="30"/>
         </key>
 
