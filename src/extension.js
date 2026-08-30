@@ -270,14 +270,14 @@ class Manager {
     }
 
     // Create UI Indicator
-    _createUi(ui_class, x, y, w, h, icon, parent) {
+    _createUi(ui_class, x, y, w, h, icon) {
         let ui = new St.Widget({ style_class: ui_class });
         if (this._isDarkTheme()) {
             ui.add_style_class_name("wgs-dark");
         }
         // ui.set_clip_to_allocation(true);
         ui._icon = null;
-        ui._parent = parent ? parent : Main.layoutManager.uiGroup;
+        ui._parent = Main.layoutManager.uiGroup;
         if (icon) {
             ui._icon = new St.Icon({
                 icon_name: icon,
@@ -1927,11 +1927,8 @@ class Manager {
                         let posCfg = this._settings.get_int(
                             'winswitch-position'
                         );
-                        let scale = 1.0;
                         let monitor = global.display.get_primary_monitor();
-                        if (monitor >= 0) {
-                            scale = global.display.get_monitor_scale(monitor);
-                        }
+                        let scale = global.display.get_monitor_scale(monitor);
                         let lW = ((pad * 2) + (wins.length * 48)) * scale;
                         let lH = ((pad * 2) + 32) * scale;
                         let lX = (gsize[0] - lW) / 2;
@@ -2279,52 +2276,47 @@ class Manager {
 
             // Init indicator
             if (!ui) {
-                activeWin = global.display.get_focus_window();
+                let display = global.get_display()
+                activeWin = display.get_focus_window();
                 if (this._isWindowBlacklist(activeWin)) {
                     activeWin = null;
                 }
                 if (activeWin) {
-                    let uipar = activeWin.get_compositor_private();
-                    if (uipar) {
-                        let wrect = activeWin.get_frame_rect();
-                        let scale = 1.0;
-                        let winMonitor = activeWin.get_monitor();
-                        if (winMonitor >= 0) {
-                            scale = global.display.get_monitor_scale(winMonitor);
-                        }
-                        let uix = ((uipar.get_width() - wrect.width) / scale / 2);
-                        let uiy = (uipar.get_height() / scale / 2) - 32 * scale;
-                        let uisize = 64 * scale;
-                        if (kid) {
-                            uix += wrect.width / scale - uisize - 64 / scale;
-                        }
-                        else {
-                            uix += 64 / scale;
-                        }
-                        ui = this._createUi(
-                            'wgs-indicator-backforward',
-                            uix,
-                            uiy,
-                            uisize, uisize,
-                            kid ? 'pan-end-symbolic.symbolic' :
-                                'pan-start-symbolic.symbolic',
-                            uipar
-                        );
-                        let invScale = 1.0 / scale;
-                        ui.scale_x = invScale;
-                        ui.scale_y = invScale;
-                        if (ui) {
-                            ui.translation_x = kid ? -32 : 32;
-                            ui.opacity = 0;
-                        }
-                        else {
-                            ui = -1;
-                        }
-                        this._actionWidgets[kidw] = ui;
+                    let wrect = activeWin.get_frame_rect();
+                    let primary_scale = 1.0;
+                    let primary_monitor = display.get_primary_monitor();
+                    primary_scale = display.get_monitor_scale(primary_monitor);
+                    let win_monitor = activeWin.get_monitor();
+                    let win_scale = 1.0;
+                    if (win_monitor >= 0) {
+                        win_scale = display.get_monitor_scale(win_monitor);
+                    }
+                    let uisize = 64 * primary_scale;
+                    let uix = wrect.x;
+                    let uiy = wrect.y + (wrect.height / 2) - uisize / 2;
+                    if (kid) {
+                        uix += wrect.width - uisize - 64 * win_scale;
                     }
                     else {
-                        this._actionWidgets[kidw] = -1;
+                        uix += 64 * win_scale;
                     }
+                    ui = this._createUi(
+                        'wgs-indicator-backforward',
+                        uix,
+                        uiy,
+                        uisize, uisize,
+                        kid ? 'pan-end-symbolic.symbolic' :
+                            'pan-start-symbolic.symbolic',
+                    );
+                    ui.scale_x = ui.scale_y = win_scale / primary_scale;
+                    if (ui) {
+                        ui.translation_x = kid ? -32 : 32;
+                        ui.opacity = 0;
+                    }
+                    else {
+                        ui = -1;
+                    }
+                    this._actionWidgets[kidw] = ui;
                 }
                 else {
                     this._actionWidgets[kidw] = -1;
@@ -2421,7 +2413,6 @@ class Manager {
                         mrect.y + (mrect.height / 2) - (uisize / 2),
                         uisize, uisize,
                         iconlist[id - 14],
-                        null
                     );
                     ui.opacity = 0;
                     ui.scale_x = ui.scale_y = 0;
