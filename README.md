@@ -1,5 +1,7 @@
 # Window Gestures Revived
 
+English | [简体中文](README.zh-CN.md)
+
 Window Gestures Revived is a community continuation of [Window Gestures](https://github.com/amarullz/windowgestures), a GNOME Shell extension for controlling and moving windows with touchpad gestures. This fork updates the extension for current GNOME Shell versions while preserving its original settings schema and gesture behavior.
 
 ## Features

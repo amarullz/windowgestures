@@ -5,146 +5,146 @@
 
         <key name="three-finger" type="b">
             <default>false</default>
-            <summary>Use 3 Fingers</summary>
+            <summary>使用三指</summary>
         </key>
         <key name="use-active-window" type="b">
             <default>true</default>
-            <summary>Handle Active Window</summary>
+            <summary>操作活动窗口</summary>
         </key>
         <key name="taphold-move" type="b">
             <default>false</default>
-            <summary>Tap and hold to move</summary>
+            <summary>按住以移动窗口</summary>
         </key>
 
         <key name="fn-resize" type="b">
             <default>true</default>
-            <summary>Enable Resize</summary>
+            <summary>启用窗口缩放</summary>
         </key>
         <key name="fn-move" type="b">
             <default>true</default>
-            <summary>Enable Move</summary>
+            <summary>启用窗口移动</summary>
         </key>
         <key name="fn-maximized-snap" type="b">
             <default>true</default>
-            <summary>Enable Maximized Snap</summary>
+            <summary>启用最大化窗口吸附</summary>
         </key>
         <key name="fn-move-snap" type="b">
             <default>true</default>
-            <summary>Enable Move Snap</summary>
+            <summary>启用移动窗口吸附</summary>
         </key>
         <key name="fn-fullscreen" type="b">
             <default>true</default>
-            <summary>Enable Fullscreen</summary>
+            <summary>启用全屏</summary>
         </key>
         <key name="pinch-enable" type="b">
             <default>true</default>
-            <summary>Enable Pinch</summary>
+            <summary>启用捏合手势</summary>
         </key>
 
 
         <key type="i" name="ui-theme">
             <default>0</default>
-            <summary>Window Switch Indicator Position</summary>
+            <summary>窗口切换指示条位置</summary>
             <range min="0" max="2"/>
         </key>
         <key type="i" name="winswitch-position">
             <default>2</default>
-            <summary>Window Switch Indicator Position</summary>
+            <summary>窗口切换指示条位置</summary>
             <range min="0" max="2"/>
         </key>
 
         <key type="i" name="swipe4-left">
             <default>7</default>
-            <summary>Swipe 4 Fingers Left</summary>
+            <summary>四指左滑</summary>
             <range min="0" max="30"/>
         </key>
         <key type="i" name="swipe4-right">
             <default>6</default>
-            <summary>Swipe 4 Fingers Right</summary>
+            <summary>四指右滑</summary>
             <range min="0" max="30"/>
         </key>
         <key type="i" name="swipe3-down">
             <default>3</default>
-            <summary>Swipe 3 Fingers Down</summary>
+            <summary>三指下滑</summary>
             <range min="0" max="30"/>
         </key>
         <key type="i" name="swipe3-left">
             <default>5</default>
-            <summary>Swipe 3 Fingers Left</summary>
+            <summary>三指左滑</summary>
             <range min="0" max="30"/>
         </key>
         <key type="i" name="swipe3-right">
             <default>4</default>
-            <summary>Swipe 3 Fingers Right</summary>
+            <summary>三指右滑</summary>
             <range min="0" max="30"/>
         </key>
         <key type="i" name="swipe4-updown">
             <default>0</default>
-            <summary>Swipe 4 Fingers Up+Down</summary>
+            <summary>四指上滑+下滑</summary>
             <range min="0" max="30"/>
         </key>
         <key type="i" name="swipe3-downup">
             <default>0</default>
-            <summary>Swipe 3 Fingers Down+Up</summary>
+            <summary>三指下滑+Up</summary>
             <range min="0" max="30"/>
         </key>
 
 
         <key type="i" name="pinch3-in">
             <default>1</default>
-            <summary>Pinch-In 3 Fingers</summary>
+            <summary>三指捏合（向内）</summary>
             <range min="0" max="30"/>
         </key>
         <key type="i" name="pinch3-out">
             <default>3</default>
-            <summary>Pinch-Out 3 Fingers</summary>
+            <summary>三指张开（向外）</summary>
             <range min="0" max="30"/>
         </key>
         <key type="i" name="pinch4-in">
             <default>0</default>
-            <summary>Pinch-In 4 Fingers</summary>
+            <summary>四指捏合（向内）</summary>
             <range min="0" max="30"/>
         </key>
         <key type="i" name="pinch4-out">
             <default>0</default>
-            <summary>Pinch-Out 4 Fingers</summary>
+            <summary>四指张开（向外）</summary>
             <range min="0" max="30"/>
         </key>
 
         <key type="i" name="pinch-in-scale">
             <default>50</default>
-            <summary>Pinch-In Scale</summary>
+            <summary>捏合缩放目标比例</summary>
             <range min="30" max="80"/>
         </key>
         <key type="i" name="pinch-out-scale">
             <default>150</default>
-            <summary>Pinch-In Scale</summary>
+            <summary>捏合缩放目标比例</summary>
             <range min="120" max="200"/>
         </key>
         <key type="i" name="edge-size">
             <default>32</default>
-            <summary>Edge Size for Resize</summary>
+            <summary>缩放边缘宽度</summary>
             <range min="16" max="96"/>
         </key>
         <key type="i" name="top-edge-size">
             <default>64</default>
-            <summary>Title Edge size</summary>
+            <summary>标题栏边缘高度</summary>
             <range min="16" max="96"/>
         </key>
         <key type="i" name="gesture-threshold">
             <default>32</default>
-            <summary>Gesture Threshold</summary>
+            <summary>手势触发阈值</summary>
             <range min="16" max="64"/>
         </key>
         <key type="i" name="gesture-cancel-threshold">
             <default>8</default>
-            <summary>Gesture Cancel Threshold</summary>
+            <summary>手势取消阈值</summary>
             <range min="4" max="32"/>
         </key>
 
         <key type="i" name="gesture-acceleration">
             <default>15</default>
-            <summary>Gesture Acceleration</summary>
+            <summary>手势加速度</summary>
             <range min="10" max="25"/>
         </key>
     </schema>

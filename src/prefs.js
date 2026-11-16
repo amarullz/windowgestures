@@ -28,25 +28,25 @@ export default class extends ExtensionPreferences {
         const DONATION_URL = 'https://ko-fi.com/vanceral';
         const ORIGINAL_PROJECT_URL = 'https://github.com/amarullz/windowgestures';
         const GNU_SOFTWARE = '<span size="small">' +
-            'This program comes with absolutely no warranty.\n' +
-            'See the <a href="https://gnu.org/licenses/old-licenses/gpl-2.0.html">' +
-            'GNU General Public License, version 2 or later</a> for details.' +
+            '本程序不提供任何担保。\n' +
+            '详情请参阅 <a href="https://gnu.org/licenses/old-licenses/gpl-2.0.html">' +
+            'GNU 通用公共许可证第 2 版或更高版本</a>。' +
             '</span>';
         let isSwap = this.getSettings().get_boolean('three-finger');
 
         // Support
         const support = new Adw.PreferencesGroup({
-            title: "A way to say thanks"
+            title: "表达谢意"
         });
         const supportRow = new Adw.ActionRow({
-            title: "Say thanks with Ko-fi",
-            subtitle: "The GNOME 51 port took a lot of time, research, and debugging. If it has been useful to you, a small Ko-fi tip is a lovely way to say thanks.",
+            title: "用 Ko-fi 请作者喝杯咖啡",
+            subtitle: "适配 GNOME 51 花了很多时间做调研和调试。如果这个扩展对你有帮助，小额赞助是表达谢意的好方式。",
             activatable: Boolean(DONATION_URL),
         });
         supportRow.add_prefix(new Gtk.Image({
             file: this.dir.get_child('donation-qr.svg').get_path(),
             pixel_size: 112,
-            tooltip_text: 'QR code for ko-fi.com/vanceral',
+            tooltip_text: 'ko-fi.com/vanceral 的二维码',
         }));
         if (DONATION_URL) {
             supportRow.add_suffix(new Gtk.Image({
@@ -61,184 +61,183 @@ export default class extends ExtensionPreferences {
 
         // Workspace guidance
         const workspaceSetup = new Adw.PreferencesGroup({
-            title: "Recommended workspace setup"
+            title: "推荐的工作区设置"
         });
         workspaceSetup.add(new Adw.ActionRow({
-            title: "Use a fixed number of workspaces",
-            subtitle: "In GNOME Settings → Multitasking → Workspaces, choose Fixed Number of Workspaces. " +
-                "Eight workspaces are recommended. Dynamic workspaces can remove empty destinations and " +
-                "make window moves feel less predictable."
+            title: "使用固定数量的工作区",
+            subtitle: "在 GNOME 设置 → 多任务 → 工作区 中选择「固定数量的工作区」。推荐设置为 8 个。" +
+                "动态工作区可能会移除空的工作区，使窗口移动的目标位置变得难以预期。"
         }));
 
         // Gesture Settings
-        const gestures = new Adw.PreferencesGroup({ title: "Gestures" });
+        const gestures = new Adw.PreferencesGroup({ title: "手势" });
         this._createSwitch(
             gestures, "three-finger",
-            "Switch 3 and 4 fingers",
+            "交换三指与四指手势",
             ""
         );
         this._createSwitch(
             gestures, "use-active-window",
-            "Use active window",
-            "If true, gesture will control active window rather than window on current pointer. This will disable resize function"
+            "只操作活动窗口",
+            "开启后，手势将控制活动窗口，而不是指针所在的窗口。这会禁用缩放功能。"
         );
 
         this._createSwitch(
             gestures, "taphold-move",
-            "Tap and hold to move/resize window",
-            "Trigger move window by tap and hold rather than by swipe down"
+            "按住并拖动以移动/缩放窗口",
+            "通过按住并拖动来触发移动窗口，而不是向下滑动"
         );
 
 
         // Function Settings
-        const fn = new Adw.PreferencesGroup({ title: "Active Functions" });
+        const fn = new Adw.PreferencesGroup({ title: "启用的功能" });
         this._createSwitch(
             fn, "pinch-enable",
-            "Enable pinch gestures",
+            "启用捏合手势",
             ""
         );
         this._createSwitch(
             fn, "fn-resize",
-            "Enable resize window",
+            "启用窗口缩放",
             ""
         );
         this._createSwitch(
             fn, "fn-move",
-            "Enable move window",
+            "启用窗口移动",
             ""
         );
         this._createSwitch(
             fn, "fn-fullscreen",
-            "Enable fullscreen",
+            "启用全屏",
             ""
         );
         this._createSwitch(
             fn, "fn-maximized-snap",
-            "Enable maximized window snap",
+            "启用最大化窗口吸附",
             ""
         );
         this._createSwitch(
             fn, "fn-move-snap",
-            "Enable move window snap",
+            "启用移动窗口吸附",
             ""
         );
 
         // Actions
         const action_list = [
-            "Disable",
-            "Minimize window",      // 1
-            "Close window",         // 2
-            "Show desktop",         // 3
+            "禁用",
+            "最小化窗口",          // 1
+            "关闭窗口",            // 2
+            "显示桌面",            // 3
 
-            "Next window",          // 4
-            "Previous window",      // 5
+            "下一个窗口",          // 4
+            "上一个窗口",          // 5
 
-            "Send window left",     // 6
-            "Send window right",    // 7
+            "窗口移到左侧工作区",  // 6
+            "窗口移到右侧工作区",  // 7
 
-            "Back",                 // 8
-            "Forward",              // 9
-            "Brightness up",        // 10
-            "Brightness down",      // 11
-            "Volume up",            // 12
-            "Volume down",          // 13
-            "Mute",                 // 14
-            "Media play",           // 15
-            "Media next",           // 16
-            "Media previous",       // 17
+            "后退",                // 8
+            "前进",                // 9
+            "提高亮度",            // 10
+            "降低亮度",            // 11
+            "增大音量",            // 12
+            "降低音量",            // 13
+            "静音",                // 14
+            "播放/暂停",           // 15
+            "下一曲",              // 16
+            "上一曲",              // 17
 
-            "Alt+Tab switch",       // 18
-            "Overview",             // 19
-            "Application Grid",     // 20
-            "Quick settings",       // 21
-            "Notification",         // 22
-            "Run (Alt+F2)",         // 23
+            "Alt+Tab 切换",        // 18
+            "活动概览",            // 19
+            "应用列表",            // 20
+            "快速设置",            // 21
+            "通知中心",            // 22
+            "运行命令 (Alt+F2)",   // 23
 
         ];
 
         const act1 = new Adw.PreferencesGroup({
-            title: (isSwap ? "3" : "4") + " Fingers Actions"
+            title: (isSwap ? "三" : "四") + "指手势动作"
         });
         this._createCombo(act1, "swipe4-left",
-            "Swipe left", "", action_list);
+            "向左滑动", "", action_list);
         this._createCombo(act1, "swipe4-right",
-            "Swipe right", "", action_list);
+            "向右滑动", "", action_list);
         this._createCombo(act1, "swipe4-updown",
-            "Swipe down",
-            "Swipe up > down if Tap and hold to move/resize window disabled",
+            "向下滑动",
+            "若未启用「按住并拖动以移动/缩放窗口」，向上滑动将等同于向下滑动",
             action_list);
 
         const act2 = new Adw.PreferencesGroup({
-            title: (isSwap ? "4" : "3") + " Fingers Actions"
+            title: (isSwap ? "四" : "三") + "指手势动作"
         });
         this._createCombo(act2, "swipe3-down",
-            "Swipe down", "", action_list);
+            "向下滑动", "", action_list);
         this._createCombo(act2, "swipe3-left",
-            "Swipe down > left", "", action_list);
+            "向下再向左滑动", "", action_list);
         this._createCombo(act2, "swipe3-right",
-            "Swipe down > right", "", action_list);
+            "向下再向右滑动", "", action_list);
         this._createCombo(act2, "swipe3-downup",
-            "Swipe down > up", "", action_list);
+            "向下再向上滑动", "", action_list);
 
-        const act3 = new Adw.PreferencesGroup({ title: "Pinch Actions" });
+        const act3 = new Adw.PreferencesGroup({ title: "捏合手势动作" });
         this._createCombo(act3, "pinch3-in",
-            "Pinch-in 3 fingers", "", action_list);
+            "三指捏合（向内）", "", action_list);
         this._createCombo(act3, "pinch3-out",
-            "Pinch-out 3 fingers", "", action_list);
+            "三指张开（向外）", "", action_list);
         this._createCombo(act3, "pinch4-in",
-            "Pinch-in 4 fingers", "", action_list);
+            "四指捏合（向内）", "", action_list);
         this._createCombo(act3, "pinch4-out",
-            "Pinch-out 4 fingers", "", action_list);
+            "四指张开（向外）", "", action_list);
 
 
         // Function Settings
-        const ui = new Adw.PreferencesGroup({ title: "User Interface" });
+        const ui = new Adw.PreferencesGroup({ title: "界面" });
         this._createCombo(ui, "ui-theme",
-            "UI color scheme", "", [
-            "Follow system", "Light", "Dark"
+            "界面配色", "", [
+            "跟随系统", "浅色", "深色"
         ]);
         this._createCombo(ui, "winswitch-position",
-            "Window switch ui position", "", [
-            "Top", "Center", "Bottom"
+            "窗口切换界面位置", "", [
+            "顶部", "居中", "底部"
         ]);
 
 
         // Tweaks Settings
-        const tweaks = new Adw.PreferencesGroup({ title: "Tweaks" });
+        const tweaks = new Adw.PreferencesGroup({ title: "高级微调" });
         this._createSpin(tweaks, "edge-size",
-            "Resize edge size",
-            "Number of pixel from window egdes to determine resize action",
+            "缩放边缘宽度",
+            "距窗口边缘多少像素内触发缩放操作",
             16, 96, 4);
         this._createSpin(tweaks, "top-edge-size",
-            "Title edge size",
-            "Number of pixel from top of window to determine move action",
+            "标题栏边缘高度",
+            "距窗口顶部多少像素内触发移动操作",
             16, 96, 4);
         this._createSpin(tweaks, "gesture-threshold",
-            "Gesture threshold",
+            "手势触发阈值",
             "",
             16, 64, 4);
         this._createSpin(tweaks, "gesture-cancel-threshold",
-            "Gesture cancel threshold",
+            "手势取消阈值",
             "",
             4, 32, 1);
         this._createSpin(tweaks, "gesture-acceleration",
-            "Gesture acceleration",
+            "手势加速度",
             "",
             10, 25, 1);
         this._createSpin(tweaks, "pinch-in-scale",
-            "Pinch in scale target",
+            "捏合缩小的目标比例",
             "",
             30, 80, 5);
         this._createSpin(tweaks, "pinch-out-scale",
-            "Pinch out scale target",
+            "捏合放大的目标比例",
             "",
             120, 200, 5);
 
 
         // About
-        const about = new Adw.PreferencesGroup({ title: "About" });
+        const about = new Adw.PreferencesGroup({ title: "关于" });
         const aboutVersion = new Adw.ActionRow({
-            title: 'Window Gestures Revived Version',
+            title: 'Window Gestures Revived 版本',
         });
         aboutVersion.add_suffix(new Gtk.Label({
             label: this.metadata.version.toString(),
@@ -247,7 +246,7 @@ export default class extends ExtensionPreferences {
         about.add(aboutVersion);
 
         const gnomeVersion = new Adw.ActionRow({
-            title: 'Gnome Version',
+            title: 'GNOME 版本',
         });
         gnomeVersion.add_suffix(new Gtk.Label({
             label: PACKAGE_VERSION,
@@ -255,14 +254,14 @@ export default class extends ExtensionPreferences {
         }));
         about.add(gnomeVersion);
 
-        const githubRow = this._createLinkRow(window, 'Window Gestures Revived on GitHub', this.metadata.url);
+        const githubRow = this._createLinkRow(window, 'GitHub 上的 Window Gestures Revived', this.metadata.url);
         about.add(githubRow);
         about.add(this._createLinkRow(
-            window, 'Original Window Gestures project', ORIGINAL_PROJECT_URL
+            window, 'Window Gestures 原项目', ORIGINAL_PROJECT_URL
         ));
         const aboutSupportRow = new Adw.ActionRow({
-            title: 'Say thanks via Ko-fi',
-            subtitle: 'The port took a lot of work. If you have found it useful, a small tip is appreciated.',
+            title: '通过 Ko-fi 表达谢意',
+            subtitle: '移植工作花费了大量精力。如果它对你有所帮助，欢迎小额赞助。',
             activatable: Boolean(DONATION_URL),
         });
         if (DONATION_URL) {
